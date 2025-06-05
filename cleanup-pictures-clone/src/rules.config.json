@@ -1,0 +1,17 @@
+{
+  "$schema": "https://your-org.com/schema/rules-config.json",
+  "rules": [
+    {
+      "name": "项目开发规则",
+      "path": "src/rules.mdc.md",
+      "description": "团队协作、代码风格、分工、提交、分支、审查等开发规范",
+      "applyTo": [
+        "src/app/**",
+        "src/components/**",
+        "src/lib/**",
+        "public/**"
+      ],
+      "autoApply": false
+    }
+  ]
+} 
