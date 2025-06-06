@@ -31,10 +31,10 @@ export interface TaskStatusResponse {
   error?: string;
 }
 
-// API Configuration
+// API Configuration - 麻雀API
 const AI_API_CONFIG = {
-  apiKey: 'sk-1eEdZF3JuFocE3eyrFBnmE1IgMFwbGcwPfMciRMdxF1Zl8Ke',
-  baseUrl: 'https://ismaque.org/v1',
+  apiKey: 'sk-1eEdZF3JuFocE3eyrFBnmE1IgMFwbGcwPfMciRMdxF1Zl8Ke', // 麻雀API key
+  baseUrl: 'https://api.apicore.ai', // 麻雀API 基础URL
   model: 'gpt-image-1'
 };
 
@@ -236,7 +236,7 @@ export const generateIPCharacter = async (request: AIGenerationRequest): Promise
     }
 
     // 调用麻雀API图生图
-    const response = await fetch(`${AI_API_CONFIG.baseUrl}/images/edits`, {
+    const response = await fetch(`${AI_API_CONFIG.baseUrl}/v1/images/edits`, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${AI_API_CONFIG.apiKey}`
