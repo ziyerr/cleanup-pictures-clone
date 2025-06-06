@@ -1,7 +1,7 @@
 // Tripo3D API integration for 3D model generation
 
 const TRIPO3D_CONFIG = {
-  apiKey: process.env.TRIPO3D_API_KEY || 'tsk_BSWrPgLgNGn1dUVsw7yJflHwmCHHY6ISUhRbYHNvIxq',
+  apiKey: 'tsk_BSWrPgLgNGn1dUVsw7yJflHwmCHHY6ISUhRbYHNvIxq',
   baseUrl: 'https://api.tripo3d.ai/v2'
 };
 
@@ -110,7 +110,7 @@ export const getTripo3DTask = async (taskId: string): Promise<Tripo3DTask> => {
 };
 
 // Poll for task completion
-export const pollTripo3DTask = async (taskId: string, maxAttempts: number = 120): Promise<Tripo3DTask> => {
+export const pollTripo3DTask = async (taskId: string, maxAttempts = 120): Promise<Tripo3DTask> => {
   return new Promise((resolve, reject) => {
     let attempts = 0;
     

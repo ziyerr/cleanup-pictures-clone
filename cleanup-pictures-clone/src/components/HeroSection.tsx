@@ -7,6 +7,7 @@ import { generateIPCharacter, validateImageFile } from '../lib/ai-api';
 import AuthModal from './AuthModal';
 import { saveUserIPCharacter } from '../lib/supabase';
 import { useUser } from '../contexts/UserContext';
+import { useRouter } from 'next/navigation';
 
 export default function HeroSection() {
   const [isDragOver, setIsDragOver] = useState(false);
@@ -16,24 +17,38 @@ export default function HeroSection() {
   const [generatedResult, setGeneratedResult] = useState<{url: string, id: string} | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [showAuthModal, setShowAuthModal] = useState(false);
-  const { currentUser, setCurrentUser } = useUser();
+  const [encouragingMessage, setEncouragingMessage] = useState('');
+  const [selectedPresetId, setSelectedPresetId] = useState<string | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
+  const { currentUser, setCurrentUser, isLoading } = useUser();
+  const router = useRouter();
+
+  // 鼓励文案数组
+  const encouragingMessages = [
+    '正在分析您的图片特征...',
+    'AI正在理解您的风格需求...',
+    '正在生成专属IP形象...',
+    '快完成了，请耐心等待...',
+    '即将为您呈现精美作品...',
+    '最后的细节调整中...'
+  ];
 
   // 预设风格选项
   const stylePresets = [
     {
       id: 'kawaii',
       label: 'Kawaii 软萌治愈',
-      description: '3D 等距视角全身潮玩手办，参照已上传的人像，忽略背景。精准保留参考图中的发型、饰品（如眼镜）、五官、表情、性别与气质，略微瘦脸。渲染光滑塑料质感表面，分割：头部、躯干、手臂、腿部、关节与现有配饰；倒角轮廓统一；柔和且鲜明的色块；细腻工作室反射；可爱与帅气并存；高真实感 3D 渲染，正方形 1:1。2.5 头身 Q 版比例，粉嫩马卡龙配色（peach #FADADD、mint #CCF1E1、baby‑blue #C8E5FF、lemon‑yellow #FFF6B2）；圆润放大双眼与淡粉腮红，额头两枚爱心亮片；软抱枕式泡泡袖与 oversized 兔耳兜帽卫衣；背包挂件：小星星与牛奶盒；柔焦漫反射光，糖果摄影棚氛围。'
+      description: '3D 等距视角全身潮玩手办，参照已上传的人像，忽略背景。精准保留参考图中的发型、饰品（如眼镜）、五官、表情、性别与气质，瘦脸。渲染光滑塑料质感表面，分割：头部、躯干、手臂、腿部、关节与现有配饰；倒角轮廓统一；柔和且鲜明的色块；细腻工作室反射；可爱与帅气并存；高真实感 3D 渲染，正方形 1:1。2.5 头身 Q 版比例，粉嫩马卡龙配色（peach #FADADD、mint #CCF1E1、baby‑blue #C8E5FF、lemon‑yellow #FFF6B2）；圆润放大双眼与淡粉腮红，额头两枚爱心亮片；软抱枕式泡泡袖与 oversized 兔耳兜帽卫衣；背包挂件：小星星与牛奶盒；柔焦漫反射光，糖果摄影棚氛围。'
     },
     {
       id: 'cyberpunk',
       label: 'Cyberpunk 潮酷赛博',
-      description: '3D 等距视角全身潮玩手办，参照已上传的人像，忽略背景。精准保留参考图中的发型、饰品（如眼镜）、五官、表情、性别与气质，略微瘦脸。渲染光滑塑料质感表面，分割：头部、躯干、手臂、腿部、关节与现有配饰；倒角轮廓统一；柔和且鲜明的色块；细腻工作室反射；可爱与帅气并存；高真实感 3D 渲染，正方形 1:1。5‑6 头身写实比例，霓虹紫‑电光青渐变主光（magenta #FF29FF → cyan #00F0FF）；Tech‑wear 折线剪裁外套，胸前微发光 QR‑patch，机械关节若隐若现；透明亚克力面罩内嵌 HUD 模块，边缘 RGB 呼吸灯；服装暗黑碳纤纹理与局部铬金属片，袖口环绕微弱电流特效；赛博城市夜景三点灯位反射，背景保持纯色虚化。'
+      description: '3D 等距视角全身潮玩手办，参照已上传的人像，忽略背景。精准保留参考图中的发型、饰品（如眼镜）、五官、表情、性别与气质，瘦脸。渲染光滑塑料质感表面，分割：头部、躯干、手臂、腿部、关节与现有配饰；倒角轮廓统一；柔和且鲜明的色块；细腻工作室反射；可爱与帅气并存；高真实感 3D 渲染，正方形 1:1。5‑6 头身写实比例，霓虹紫‑电光青渐变主光（magenta #FF29FF → cyan #00F0FF）；Tech‑wear 折线剪裁外套，胸前微发光 QR‑patch，机械关节若隐若现；透明亚克力面罩内嵌 HUD 模块，边缘 RGB 呼吸灯；服装暗黑碳纤纹理与局部铬金属片，袖口环绕微弱电流特效；赛博城市夜景三点灯位反射，背景保持纯色虚化。'
     },
     {
       id: 'guochao',
       label: 'Guochao 国潮新中式',
-      description: '3D 等距视角全身潮玩手办，参照已上传的人像，忽略背景。精准保留参考图中的发型、饰品（如眼镜）、五官、表情、性别与气质，略微瘦脸。渲染光滑塑料质感表面，分割：头部、躯干、手臂、腿部、关节与现有配饰；倒角轮廓统一；柔和且鲜明的色块；细腻工作室反射；可爱与帅气并存；高真实感 3D 渲染，正方形 1:1。3.5 头身 Q‑real 比例，主配色：朱砂红 #E63946、琉璃青 #00867D，点缀鎏金 #D4AF37；改良短款对襟汉服上衣搭配现代运动裤剪裁，盘扣与云纹压印；胸口织金飞鹤纹章，腰间流苏玉佩；袖口与鞋侧水墨晕染渐变呼应山水；柔光棚宣纸台面微反射。'
+      description: '3D 等距视角全身潮玩手办，参照已上传的人像，忽略背景。精准保留参考图中的发型、饰品（如眼镜）、五官、表情、性别与气质，瘦脸。渲染光滑塑料质感表面，分割：头部、躯干、手臂、腿部、关节与现有配饰；倒角轮廓统一；柔和且鲜明的色块；细腻工作室反射；可爱与帅气并存；高真实感 3D 渲染，正方形 1:1。3.5 头身 Q‑real 比例，主配色：朱砂红 #E63946、琉璃青 #00867D，点缀鎏金 #D4AF37；改良短款对襟汉服上衣搭配现代运动裤剪裁，盘扣与云纹压印；胸口织金飞鹤纹章，腰间流苏玉佩；袖口与鞋侧水墨晕染渐变呼应山水；柔光棚宣纸台面微反射。'
     }
   ];
 
@@ -100,6 +115,7 @@ export default function HeroSection() {
   };
 
   const selectStylePreset = (preset: typeof stylePresets[0]) => {
+    setSelectedPresetId(preset.id);
     setStyleDescription(preset.description);
   };
 
@@ -131,20 +147,29 @@ export default function HeroSection() {
       return;
     }
 
+    if (isLoading) {
+      return; // Wait for user loading to complete
+    }
+
     if (!currentUser) {
       setShowAuthModal(true);
       return;
     }
 
+    setIsSaving(true);
+    setError(null);
+
     try {
       // Save IP character to user's collection
       await saveUserIPCharacter(currentUser.id, `IP形象_${Date.now()}`, generatedResult.url);
       
-      // TODO: 这里可以添加周边生成逻辑
-      alert('IP形象保存成功！周边生成功能开发中...');
+      // Redirect to workshop
+      router.push('/workshop');
     } catch (error) {
       console.error('保存IP形象失败:', error);
       setError(`保存失败: ${error instanceof Error ? error.message : '未知错误'}`);
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -152,12 +177,17 @@ export default function HeroSection() {
   const saveIPAfterAuth = async (user: any) => {
     if (!generatedResult) return;
 
+    setIsSaving(true);
+    setError(null);
+
     try {
       await saveUserIPCharacter(user.id, `IP形象_${Date.now()}`, generatedResult.url);
-      alert('IP形象保存成功！周边生成功能开发中...');
+      router.push('/workshop');
     } catch (error) {
       console.error('保存IP形象失败:', error);
       setError(`保存失败: ${error instanceof Error ? error.message : '未知错误'}`);
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -167,6 +197,14 @@ export default function HeroSection() {
 
     setIsGenerating(true);
     setError(null);
+    
+    // 开始鼓励文案循环
+    let messageIndex = 0;
+    setEncouragingMessage(encouragingMessages[0]);
+    const messageInterval = setInterval(() => {
+      messageIndex = (messageIndex + 1) % encouragingMessages.length;
+      setEncouragingMessage(encouragingMessages[messageIndex]);
+    }, 5000);
 
     try {
       // 准备生成请求
@@ -202,7 +240,9 @@ export default function HeroSection() {
       console.error('生成过程中出错:', error);
       setError(error instanceof Error ? error.message : '生成失败，请稍后重试');
     } finally {
+      clearInterval(messageInterval);
       setIsGenerating(false);
+      setEncouragingMessage('');
     }
   };
 
@@ -226,19 +266,37 @@ export default function HeroSection() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12 items-start">
         {/* Left Content */}
         <div className="space-y-6">
-          <h1 className="text-4xl lg:text-5xl xl:text-6xl font-bold leading-tight">
-            上传一张<span className="highlight-green">图片</span>，
-            创造专属<span className="highlight-green">IP形象</span>，
-            生成完整<span className="highlight-green">周边套装</span>
-            <span className="underline decoration-4 underline-offset-4">秒级完成</span>
-          </h1>
+          {!uploadedImage && (
+            <h1 className="text-4xl lg:text-5xl xl:text-6xl font-bold leading-tight">
+              上传一张<span className="highlight-green">图片</span>，
+              创造专属<span className="highlight-green">IP形象</span>，
+              生成完整<span className="highlight-green">周边套装</span>
+              <span className="underline decoration-4 underline-offset-4">秒级完成</span>
+            </h1>
+          )}
 
-          <p className="text-xl text-gray-600 leading-relaxed">
-            只需描述您想要的IP风格，我们的AI就能为您生成卡通形象，并制作手机壳、钥匙扣、3D手办、冰箱贴等完整周边产品线
-          </p>
+          {!uploadedImage && (
+            <p className="text-xl text-gray-600 leading-relaxed">
+              只需描述您想要的IP风格，我们的AI就能为您生成卡通形象，并制作手机壳、钥匙扣、3D手办、冰箱贴等完整周边产品线
+            </p>
+          )}
 
-          {/* Upload Area 仅在未生成图片时显示 */}
-          {!generatedResult && (
+          {/* Upload Area - 显示上传区域或已上传的图片 */}
+          {uploadedImage ? (
+            <div className="relative max-h-[400px] overflow-hidden rounded-2xl bg-gray-50">
+              <img
+                src={uploadedImage.url}
+                alt="用户上传的图片"
+                className="w-full h-auto max-h-[400px] object-contain rounded-2xl"
+              />
+              <button
+                onClick={removeImage}
+                className="absolute top-2 right-2 w-8 h-8 bg-black/50 hover:bg-black/70 rounded-full flex items-center justify-center text-white transition-all"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+          ) : (
             <div
               className={`upload-area bg-gray-50 p-6 text-center cursor-pointer transition-all duration-300 ${
                 isDragOver ? 'dragover' : ''
@@ -280,7 +338,11 @@ export default function HeroSection() {
                 <button
                   key={preset.id}
                   onClick={() => selectStylePreset(preset)}
-                  className="px-3 py-2 text-sm bg-gray-100 hover:bg-cleanup-green hover:text-black rounded-full transition-colors text-gray-700 border border-gray-200 hover:border-cleanup-green"
+                  className={`px-3 py-2 text-sm rounded-full transition-colors border ${
+                    selectedPresetId === preset.id
+                      ? 'bg-cleanup-green text-black border-cleanup-green'
+                      : 'bg-gray-100 hover:bg-cleanup-green hover:text-black text-gray-700 border-gray-200 hover:border-cleanup-green'
+                  }`}
                 >
                   {preset.label}
                 </button>
@@ -289,7 +351,10 @@ export default function HeroSection() {
 
             <textarea
               value={styleDescription}
-              onChange={(e) => setStyleDescription(e.target.value)}
+              onChange={(e) => {
+                setStyleDescription(e.target.value);
+                setSelectedPresetId(null); // Clear selection when manually editing
+              }}
               placeholder="例如：可爱的卡通风格，大眼睛，温暖的色调，适合做成毛绒玩具..."
               className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cleanup-green focus:border-cleanup-green resize-none"
               rows={3}
@@ -298,7 +363,10 @@ export default function HeroSection() {
             {styleDescription && (
               <div className="flex justify-end">
                 <button
-                  onClick={() => setStyleDescription('')}
+                  onClick={() => {
+                    setStyleDescription('');
+                    setSelectedPresetId(null);
+                  }}
                   className="text-sm text-gray-500 hover:text-gray-700 underline"
                 >
                   清空描述
@@ -327,9 +395,10 @@ export default function HeroSection() {
           <div className="flex flex-col items-center mt-8">
             <button
               onClick={handleGenerate}
-              className="w-full max-w-xs py-3 px-8 rounded-xl bg-white text-black font-bold text-base border border-gray-300 shadow hover:bg-gray-50 transition-all mb-2"
+              disabled={!uploadedImage || isGenerating}
+              className="w-full max-w-xs py-3 px-8 rounded-xl bg-white text-black font-bold text-base border border-gray-300 shadow hover:bg-gray-50 transition-all mb-2 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {generatedResult ? '重新生成IP形象' : '开始生成IP形象'}
+              {isGenerating ? '生成中...' : generatedResult ? '重新生成IP形象' : '开始生成IP形象'}
             </button>
           </div>
 
@@ -385,10 +454,20 @@ export default function HeroSection() {
                 <div className="flex flex-row justify-center items-center gap-6 px-8 py-6 bg-white rounded-3xl shadow-2xl border border-gray-100 mt-20 mx-auto max-w-lg" style={{marginTop:'80px'}}>
                   <button
                     onClick={handleSaveIPCharacter}
-                    className="flex flex-col items-center gap-1 px-14 py-4 rounded-3xl bg-cleanup-green text-black font-extrabold text-xl shadow-xl border-2 border-cleanup-green hover:bg-green-300 transition-all min-w-[240px]"
+                    disabled={isSaving}
+                    className="flex flex-col items-center gap-1 px-14 py-4 rounded-3xl bg-cleanup-green text-black font-extrabold text-xl shadow-xl border-2 border-cleanup-green hover:bg-green-300 transition-all min-w-[240px] disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    <span className="flex items-center gap-2 text-2xl font-extrabold"><Sparkles className="w-7 h-7" />保存IP形象</span>
-                    <span className="text-base font-bold mt-1">立即生成周边</span>
+                    <span className="flex items-center gap-2 text-2xl font-extrabold">
+                      {isSaving ? (
+                        <Loader2 className="w-7 h-7 animate-spin" />
+                      ) : (
+                        <Sparkles className="w-7 h-7" />
+                      )}
+                      {isSaving ? '保存中...' : '保存IP形象'}
+                    </span>
+                    <span className="text-base font-bold mt-1">
+                      {isSaving ? '请稍候' : '立即生成周边'}
+                    </span>
                   </button>
                   <button
                     onClick={downloadGeneratedImage}
@@ -400,35 +479,33 @@ export default function HeroSection() {
                   </button>
                 </div>
               </>
-            ) : uploadedImage ? (
+            ) : isGenerating ? (
+              /* Generation Loading State */
               <div className="relative">
-                <img
-                  src={uploadedImage.url}
-                  alt="用户上传的图片预览"
-                  className={`w-full h-auto rounded-2xl shadow-2xl transition-opacity duration-300 ${
-                    isGenerating ? 'opacity-50' : ''
-                  }`}
-                />
-                {isGenerating && (
-                  <div className="absolute inset-0 flex items-center justify-center bg-black/20 rounded-2xl">
-                    <div className="bg-white/90 backdrop-blur-sm rounded-lg p-4 flex items-center space-x-3">
-                      <Loader2 className="w-6 h-6 animate-spin text-cleanup-green" />
-                      <p className="text-sm font-medium text-gray-800">
-                        AI正在生成您的IP形象...
-                      </p>
+                <div className="w-full h-[420px] bg-gradient-to-br from-cleanup-green/10 to-blue-50 rounded-2xl shadow-2xl flex flex-col items-center justify-center">
+                  <div className="mb-8">
+                    <Loader2 className="w-16 h-16 animate-spin text-cleanup-green mb-4" />
+                    <div className="w-32 h-2 bg-gray-200 rounded-full overflow-hidden">
+                      <div className="h-full bg-cleanup-green rounded-full animate-pulse" style={{width: '60%'}} />
                     </div>
                   </div>
-                )}
-                <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent rounded-2xl" />
-                <div className="absolute bottom-4 left-4 right-4">
-                  <div className="bg-white/90 backdrop-blur-sm rounded-lg p-3">
-                    <p className="text-sm font-medium text-gray-800">
-                      ✨ 准备生成专属IP形象
+                  <div className="text-center max-w-xs">
+                    <h3 className="text-lg font-semibold text-gray-800 mb-2">AI正在创作中...</h3>
+                    <p className="text-sm text-gray-600 leading-relaxed">
+                      {encouragingMessage}
                     </p>
+                  </div>
+                  <div className="absolute bottom-4 left-4 right-4">
+                    <div className="bg-white/90 backdrop-blur-sm rounded-lg p-3 text-center">
+                      <p className="text-xs text-gray-500">
+                        ✨ 预计需要30-60秒，请耐心等待
+                      </p>
+                    </div>
                   </div>
                 </div>
               </div>
             ) : (
+              /* Default State */
               <img
                 src="/task-home-image-replace/before-after.png"
                 alt="IP周边产品展示"
@@ -463,6 +540,7 @@ export default function HeroSection() {
           saveIPAfterAuth(user);
         }}
       />
+
     </section>
   );
 }
