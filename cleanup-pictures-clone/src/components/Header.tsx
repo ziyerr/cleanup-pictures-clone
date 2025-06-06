@@ -3,11 +3,16 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { Button } from './ui/button';
-import { Menu, Settings, X } from 'lucide-react';
+import { Menu, User, X, LogOut } from 'lucide-react';
+import AuthModal from './AuthModal';
+import { useUser } from '../contexts/UserContext';
 
 export default function Header() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [activeSection, setActiveSection] = useState('');
+  const [showAuthModal, setShowAuthModal] = useState(false);
+  const [showUserMenu, setShowUserMenu] = useState(false);
+  const { currentUser, setCurrentUser } = useUser();
 
   const navItems = [
     { id: 'usecases', label: '应用场景', href: '#usecases' },
@@ -29,6 +34,23 @@ export default function Header() {
       });
     }
     setIsMobileMenuOpen(false);
+  };
+
+  // Handle user login
+  const handleLoginClick = () => {
+    setShowAuthModal(true);
+  };
+
+  // Handle user logout
+  const handleLogout = () => {
+    setCurrentUser(null);
+    setShowUserMenu(false);
+  };
+
+  // Toggle user menu
+  const toggleUserMenu = (event: React.MouseEvent) => {
+    event.stopPropagation();
+    setShowUserMenu(!showUserMenu);
   };
 
   // 监听滚动事件，自动更新当前激活的导航项
@@ -76,6 +98,23 @@ export default function Header() {
       window.removeEventListener('scroll', handleScroll);
     };
   }, []);
+
+  // Close user menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (showUserMenu) {
+        setShowUserMenu(false);
+      }
+    };
+
+    if (showUserMenu) {
+      document.addEventListener('click', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('click', handleClickOutside);
+    };
+  }, [showUserMenu]);
 
   return (
     <header className="w-full bg-white border-b border-gray-200 sticky top-0 z-50">
@@ -134,9 +173,55 @@ export default function Header() {
               </button>
             ))}
 
-            <Button variant="ghost" size="icon">
-              <Settings className="w-4 h-4" />
-            </Button>
+            {/* User Login/Profile Button */}
+            <div className="relative">
+              {currentUser ? (
+                /* User is logged in - show user menu */
+                <div>
+                  <Button 
+                    variant="ghost" 
+                    size="icon"
+                    onClick={toggleUserMenu}
+                    className="relative"
+                  >
+                    <User className="w-4 h-4" />
+                  </Button>
+                  
+                  {showUserMenu && (
+                    <div 
+                      className="absolute right-0 mt-2 w-48 bg-white border border-gray-200 rounded-md shadow-lg z-50"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <div className="py-1">
+                        <div className="px-4 py-2 text-sm text-gray-700 border-b border-gray-100">
+                          <div className="font-medium">{currentUser.username}</div>
+                          {currentUser.email && (
+                            <div className="text-xs text-gray-500">{currentUser.email}</div>
+                          )}
+                        </div>
+                        <button
+                          onClick={handleLogout}
+                          className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                        >
+                          <LogOut className="w-4 h-4 mr-2" />
+                          退出登录
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                /* User is not logged in - show login button */
+                <Button 
+                  variant="ghost" 
+                  size="icon"
+                  onClick={handleLoginClick}
+                  title="用户登录"
+                >
+                  <User className="w-4 h-4" />
+                </Button>
+              )}
+            </div>
           </nav>
 
           {/* Mobile menu button */}
@@ -174,10 +259,50 @@ export default function Header() {
                   {item.label}
                 </button>
               ))}
+
+              {/* Mobile User Login/Profile */}
+              <div className="border-t border-gray-200 pt-4">
+                {currentUser ? (
+                  <div className="space-y-2">
+                    <div className="px-2 py-1 text-sm text-gray-700">
+                      <div className="font-medium">{currentUser.username}</div>
+                      {currentUser.email && (
+                        <div className="text-xs text-gray-500">{currentUser.email}</div>
+                      )}
+                    </div>
+                    <button
+                      onClick={handleLogout}
+                      className="flex items-center w-full px-2 py-2 text-sm text-gray-700 hover:text-black"
+                    >
+                      <LogOut className="w-4 h-4 mr-2" />
+                      退出登录
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    onClick={handleLoginClick}
+                    className="flex items-center w-full px-2 py-2 text-sm text-gray-700 hover:text-black"
+                  >
+                    <User className="w-4 h-4 mr-2" />
+                    用户登录
+                  </button>
+                )}
+              </div>
             </nav>
           </div>
         )}
       </div>
+
+      {/* Authentication Modal */}
+      <AuthModal
+        isOpen={showAuthModal}
+        onClose={() => setShowAuthModal(false)}
+        onSuccess={(user) => {
+          setCurrentUser(user);
+          setShowAuthModal(false);
+          setIsMobileMenuOpen(false); // 关闭移动端菜单
+        }}
+      />
     </header>
   );
 }

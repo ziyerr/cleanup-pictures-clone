@@ -4,6 +4,9 @@ import { useState, useCallback } from 'react';
 import { Button } from './ui/button';
 import { Upload, ArrowDown, Wand2, X, Loader2, CheckCircle, AlertCircle, Sparkles } from 'lucide-react';
 import { generateIPCharacter, validateImageFile } from '../lib/ai-api';
+import AuthModal from './AuthModal';
+import { saveUserIPCharacter } from '../lib/supabase';
+import { useUser } from '../contexts/UserContext';
 
 export default function HeroSection() {
   const [isDragOver, setIsDragOver] = useState(false);
@@ -12,6 +15,8 @@ export default function HeroSection() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedResult, setGeneratedResult] = useState<{url: string, id: string} | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [showAuthModal, setShowAuthModal] = useState(false);
+  const { currentUser, setCurrentUser } = useUser();
 
   // 预设风格选项
   const stylePresets = [
@@ -116,6 +121,43 @@ export default function HeroSection() {
     } catch (error) {
       console.error('下载失败:', error);
       setError('下载失败，请稍后重试');
+    }
+  };
+
+  // Handle save IP character
+  const handleSaveIPCharacter = async () => {
+    if (!generatedResult) {
+      setError('请先生成IP形象');
+      return;
+    }
+
+    if (!currentUser) {
+      setShowAuthModal(true);
+      return;
+    }
+
+    try {
+      // Save IP character to user's collection
+      await saveUserIPCharacter(currentUser.id, `IP形象_${Date.now()}`, generatedResult.url);
+      
+      // TODO: 这里可以添加周边生成逻辑
+      alert('IP形象保存成功！周边生成功能开发中...');
+    } catch (error) {
+      console.error('保存IP形象失败:', error);
+      setError(`保存失败: ${error instanceof Error ? error.message : '未知错误'}`);
+    }
+  };
+
+  // Save IP character after authentication
+  const saveIPAfterAuth = async (user: any) => {
+    if (!generatedResult) return;
+
+    try {
+      await saveUserIPCharacter(user.id, `IP形象_${Date.now()}`, generatedResult.url);
+      alert('IP形象保存成功！周边生成功能开发中...');
+    } catch (error) {
+      console.error('保存IP形象失败:', error);
+      setError(`保存失败: ${error instanceof Error ? error.message : '未知错误'}`);
     }
   };
 
@@ -342,14 +384,14 @@ export default function HeroSection() {
                 {/* 操作按钮区域：图片下方64px间距，块级独立，宽度与图片对齐 */}
                 <div className="flex flex-row justify-center items-center gap-6 px-8 py-6 bg-white rounded-3xl shadow-2xl border border-gray-100 mt-20 mx-auto max-w-lg" style={{marginTop:'80px'}}>
                   <button
-                    onClick={() => {/* TODO: 保存IP形象&生成周边功能 */}}
+                    onClick={handleSaveIPCharacter}
                     className="flex flex-col items-center gap-1 px-14 py-4 rounded-3xl bg-cleanup-green text-black font-extrabold text-xl shadow-xl border-2 border-cleanup-green hover:bg-green-300 transition-all min-w-[240px]"
                   >
                     <span className="flex items-center gap-2 text-2xl font-extrabold"><Sparkles className="w-7 h-7" />保存IP形象</span>
                     <span className="text-base font-bold mt-1">立即生成周边</span>
                   </button>
                   <button
-                    onClick={() => {/* TODO: 下载图片功能 */}}
+                    onClick={downloadGeneratedImage}
                     className="p-2 bg-transparent border-none shadow-none hover:bg-gray-100 rounded-full text-gray-400 hover:text-gray-600 transition-all"
                     style={{ boxShadow: 'none', border: 'none' }}
                     aria-label="下载图片"
@@ -409,6 +451,18 @@ export default function HeroSection() {
           </div>
         </div>
       </div>
+
+      {/* Authentication Modal */}
+      <AuthModal
+        isOpen={showAuthModal}
+        onClose={() => setShowAuthModal(false)}
+        onSuccess={(user) => {
+          setCurrentUser(user);
+          setShowAuthModal(false);
+          // 自动保存IP形象
+          saveIPAfterAuth(user);
+        }}
+      />
     </section>
   );
 }

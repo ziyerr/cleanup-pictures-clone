@@ -1,4 +1,5 @@
 import { createGenerationTask, updateGenerationTask, getGenerationTask, uploadImageToSupabase } from './supabase';
+import { generate3DModelFromImage, generate3DModelFromViews } from './tripo3d-api';
 
 // AI API integration for IP character generation
 export interface AIGenerationRequest {
@@ -24,6 +25,7 @@ export interface TaskStatusResponse {
     id: string;
     status: 'pending' | 'processing' | 'completed' | 'failed';
     result_image_url?: string;
+    result_data?: Record<string, any>;
     error_message?: string;
   };
   error?: string;
@@ -140,6 +142,7 @@ export const checkTaskStatus = async (taskId: string): Promise<TaskStatusRespons
         id: task.id,
         status: task.status,
         result_image_url: task.result_image_url,
+        result_data: task.result_data,
         error_message: task.error_message
       }
     };
@@ -478,6 +481,65 @@ const processMerchandiseTask = async (taskId: string, originalImageUrl: string, 
     await updateGenerationTask(taskId, {
       status: 'failed',
       error_message: error instanceof Error ? error.message : '未知错误'
+    });
+  }
+};
+
+// Generate 3D model from IP character views
+export const generate3DModel = async (
+  frontViewUrl: string,
+  leftViewUrl?: string,
+  backViewUrl?: string,
+  prompt?: string,
+  userId?: string
+): Promise<string> => {
+  try {
+    // Create 3D model generation task
+    const task = await createGenerationTask(
+      '3d_model',
+      `Generate 3D model: ${prompt || 'IP character'}`,
+      frontViewUrl,
+      userId
+    );
+
+    // Start background processing
+    process3DModelTask(task.id, frontViewUrl, leftViewUrl, backViewUrl, prompt);
+
+    return task.id;
+  } catch (error) {
+    throw new Error(`创建3D模型任务失败: ${error instanceof Error ? error.message : '未知错误'}`);
+  }
+};
+
+const process3DModelTask = async (
+  taskId: string,
+  frontViewUrl: string,
+  leftViewUrl?: string,
+  backViewUrl?: string,
+  prompt?: string
+) => {
+  try {
+    await updateGenerationTask(taskId, { status: 'processing' });
+
+    let modelUrl: string;
+
+    if (leftViewUrl && backViewUrl) {
+      // Use multi-view generation if all views are available
+      modelUrl = await generate3DModelFromViews(frontViewUrl, leftViewUrl, backViewUrl);
+    } else {
+      // Use single image generation
+      modelUrl = await generate3DModelFromImage(frontViewUrl, prompt);
+    }
+
+    await updateGenerationTask(taskId, {
+      status: 'completed',
+      result_data: { model_url: modelUrl }
+    });
+  } catch (error) {
+    console.error('3D model generation failed:', error);
+    await updateGenerationTask(taskId, {
+      status: 'failed',
+      error_message: error instanceof Error ? error.message : '3D模型生成失败'
     });
   }
 };

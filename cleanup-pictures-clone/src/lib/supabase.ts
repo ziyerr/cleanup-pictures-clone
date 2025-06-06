@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
+import { v4 as uuidv4 } from 'uuid';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
@@ -47,7 +48,7 @@ export const createGenerationTask = async (
   originalImageUrl?: string,
   userId?: string
 ): Promise<GenerationTask> => {
-  const taskId = `task_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+  const taskId = uuidv4();
   
   const task: Partial<GenerationTask> = {
     id: taskId,
@@ -137,31 +138,51 @@ export const uploadImageToSupabase = async (
 
 // User management functions
 export const registerUser = async (username: string, password: string, email?: string): Promise<User> => {
-  // Simple password hashing (in production, use bcrypt or similar)
-  const passwordHash = btoa(password); // Base64 encoding for demo
-  
-  const user: Partial<User> = {
-    id: `user_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-    username,
-    email,
-    password_hash: passwordHash,
-    created_at: new Date().toISOString(),
-  };
+  try {
+    console.log('开始用户注册:', { username, email });
+    
+    // Simple password hashing (in production, use bcrypt or similar)
+    const passwordHash = btoa(password); // Base64 encoding for demo
+    
+    const user: Partial<User> = {
+      id: uuidv4(),
+      username,
+      ...(email && { email }), // 只有当email存在时才包含此字段
+      password_hash: passwordHash,
+      created_at: new Date().toISOString(),
+    };
 
-  const { data, error } = await supabase
-    .from('users')
-    .insert([user])
-    .select()
-    .single();
+    console.log('准备插入的用户数据:', { ...user, password_hash: '[HIDDEN]' });
 
-  if (error) {
-    if (error.code === '23505') {
-      throw new Error('用户名已存在');
+    const { data, error } = await supabase
+      .from('users')
+      .insert([user])
+      .select()
+      .single();
+
+    console.log('用户注册Supabase响应:', { data: data ? { ...data, password_hash: '[HIDDEN]' } : null, error });
+
+    if (error) {
+      console.error('用户注册错误详情:', error);
+      if (error.code === '23505') {
+        throw new Error('用户名已存在');
+      }
+      throw new Error(`注册失败: ${error.message} (code: ${error.code})`);
     }
-    throw new Error(`注册失败: ${error.message}`);
-  }
 
-  return data;
+    if (!data) {
+      throw new Error('注册失败: 未返回用户数据');
+    }
+
+    console.log('用户注册成功:', { ...data, password_hash: '[HIDDEN]' });
+    return data;
+  } catch (err) {
+    console.error('registerUser 捕获错误:', err);
+    if (err instanceof Error) {
+      throw err;
+    }
+    throw new Error(`注册失败: ${String(err)}`);
+  }
 };
 
 export const loginUser = async (username: string, password: string): Promise<User> => {
@@ -189,23 +210,43 @@ export const saveUserIPCharacter = async (
   name: string,
   mainImageUrl: string
 ): Promise<UserIPCharacter> => {
-  const character: Partial<UserIPCharacter> = {
-    id: `char_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-    user_id: userId,
-    name,
-    main_image_url: mainImageUrl,
-    created_at: new Date().toISOString(),
-  };
+  try {
+    console.log('开始保存IP形象:', { userId, name, mainImageUrl });
+    
+    const character: Partial<UserIPCharacter> = {
+      id: uuidv4(),
+      user_id: userId,
+      name,
+      main_image_url: mainImageUrl,
+      created_at: new Date().toISOString(),
+    };
 
-  const { data, error } = await supabase
-    .from('user_ip_characters')
-    .insert([character])
-    .select()
-    .single();
+    console.log('准备插入的数据:', character);
 
-  if (error) {
-    throw new Error(`保存IP形象失败: ${error.message}`);
+    const { data, error } = await supabase
+      .from('user_ip_characters')
+      .insert([character])
+      .select()
+      .single();
+
+    console.log('Supabase响应:', { data, error });
+
+    if (error) {
+      console.error('Supabase错误详情:', error);
+      throw new Error(`保存IP形象失败: ${error.message} (code: ${error.code})`);
+    }
+
+    if (!data) {
+      throw new Error('保存IP形象失败: 未返回数据');
+    }
+
+    console.log('IP形象保存成功:', data);
+    return data;
+  } catch (err) {
+    console.error('saveUserIPCharacter 捕获错误:', err);
+    if (err instanceof Error) {
+      throw err;
+    }
+    throw new Error(`保存IP形象失败: ${String(err)}`);
   }
-
-  return data;
 };
