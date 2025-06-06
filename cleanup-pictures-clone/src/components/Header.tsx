@@ -3,16 +3,17 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { Button } from './ui/button';
-import { Menu, User, X, LogOut } from 'lucide-react';
+import { Menu, User, X, LogOut, Palette, ChevronDown } from 'lucide-react';
 import AuthModal from './AuthModal';
 import { useUser } from '../contexts/UserContext';
+import { clearUserData } from '../lib/auth-utils';
 
 export default function Header() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [activeSection, setActiveSection] = useState('');
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
-  const { currentUser, setCurrentUser } = useUser();
+  const { currentUser, setCurrentUser, isLoading } = useUser();
 
   const navItems = [
     { id: 'usecases', label: '应用场景', href: '#usecases' },
@@ -43,6 +44,7 @@ export default function Header() {
 
   // Handle user logout
   const handleLogout = () => {
+    clearUserData();
     setCurrentUser(null);
     setShowUserMenu(false);
   };
@@ -174,8 +176,11 @@ export default function Header() {
             ))}
 
             {/* User Login/Profile Button */}
-            <div className="relative">
-              {currentUser ? (
+            <div className="relative" suppressHydrationWarning>
+              {isLoading ? (
+                /* Loading state */
+                <div className="w-9 h-9 rounded-full bg-gray-100 animate-pulse"></div>
+              ) : currentUser ? (
                 /* User is logged in - show user menu */
                 <div>
                   <Button 
@@ -199,6 +204,14 @@ export default function Header() {
                             <div className="text-xs text-gray-500">{currentUser.email}</div>
                           )}
                         </div>
+                        <Link
+                          href="/workshop"
+                          className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                          onClick={() => setShowUserMenu(false)}
+                        >
+                          <Palette className="w-4 h-4 mr-2" />
+                          我的IP工坊
+                        </Link>
                         <button
                           onClick={handleLogout}
                           className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
@@ -261,8 +274,12 @@ export default function Header() {
               ))}
 
               {/* Mobile User Login/Profile */}
-              <div className="border-t border-gray-200 pt-4">
-                {currentUser ? (
+              <div className="border-t border-gray-200 pt-4" suppressHydrationWarning>
+                {isLoading ? (
+                  <div className="px-2 py-2">
+                    <div className="h-4 bg-gray-200 rounded animate-pulse"></div>
+                  </div>
+                ) : currentUser ? (
                   <div className="space-y-2">
                     <div className="px-2 py-1 text-sm text-gray-700">
                       <div className="font-medium">{currentUser.username}</div>
@@ -270,6 +287,14 @@ export default function Header() {
                         <div className="text-xs text-gray-500">{currentUser.email}</div>
                       )}
                     </div>
+                    <Link
+                      href="/workshop"
+                      className="flex items-center w-full px-2 py-2 text-sm text-gray-700 hover:text-black"
+                      onClick={() => setIsMobileMenuOpen(false)}
+                    >
+                      <Palette className="w-4 h-4 mr-2" />
+                      我的IP工坊
+                    </Link>
                     <button
                       onClick={handleLogout}
                       className="flex items-center w-full px-2 py-2 text-sm text-gray-700 hover:text-black"

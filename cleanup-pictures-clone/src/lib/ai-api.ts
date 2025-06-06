@@ -1,9 +1,15 @@
-import { createGenerationTask, updateGenerationTask, getGenerationTask, uploadImageToSupabase } from './supabase';
+import { 
+  uploadImageToSupabase,
+  createGenerationTask,
+  updateGenerationTask,
+  getGenerationTask,
+  saveUserIPCharacter 
+} from './supabase';
 import { generate3DModelFromImage, generate3DModelFromViews } from './tripo3d-api';
 
 // AI API integration for IP character generation
 export interface AIGenerationRequest {
-  image: File | string; // Can be File object or base64 string
+  image: File | Blob | string; // Can be File object, Blob, or base64 string
   prompt: string;
   model?: string;
   userId?: string;
@@ -58,8 +64,10 @@ export const generateIPCharacterWithTask = async (request: AIGenerationRequest):
   try {
     // Create task in database
     const task = await createGenerationTask(
-      'ip_generation',
+      'ip_generation', 
       request.prompt,
+      // If image is a string, it might be a URL or base64. For now, we don't store it as original_image_url
+      // to avoid complexity. The actual generated image will be stored later.
       undefined,
       request.userId
     );
@@ -83,25 +91,49 @@ export const generateIPCharacterWithTask = async (request: AIGenerationRequest):
 // Background task processing
 const processGenerationTask = async (taskId: string, request: AIGenerationRequest) => {
   try {
-    // Update task status to processing
+    // Update task status to processing in database
     await updateGenerationTask(taskId, { status: 'processing' });
 
     // Call the actual AI generation
     const result = await generateIPCharacter(request);
 
     if (result.success && result.data?.url) {
-      // Convert URL to blob and upload to Supabase
       let finalImageUrl = result.data.url;
       
+      // If the result is a URL (not base64), fetch it and upload to Supabase
       if (!result.data.url.startsWith('data:')) {
-        // If it's a URL, fetch and upload to Supabase
         try {
+          console.log(`Fetching image from URL: ${result.data.url}`);
           const response = await fetch(result.data.url);
+          if (!response.ok) {
+            throw new Error(`Failed to fetch image: ${response.statusText}`);
+          }
           const blob = await response.blob();
           const fileName = `ip_character_${taskId}.png`;
+          console.log(`Uploading image to Supabase with filename: ${fileName}`);
           finalImageUrl = await uploadImageToSupabase(blob, fileName);
+          console.log(`Image uploaded to Supabase, URL: ${finalImageUrl}`);
         } catch (uploadError) {
-          console.warn('图片上传到Supabase失败，使用原始URL:', uploadError);
+          console.error('图片上传到Supabase失败，将以降级模式处理:', uploadError);
+          // In case of upload failure, we still mark task as failed.
+          await updateGenerationTask(taskId, {
+            status: 'failed',
+            error_message: `生成成功但上传失败: ${uploadError instanceof Error ? uploadError.message : '未知上传错误'}`
+          });
+          return; // Stop processing
+        }
+      }
+
+      // Save the character to the database if a user ID is provided
+      if (request.userId) {
+        try {
+          // The name could be derived from the prompt or be a default
+          const characterName = request.prompt.substring(0, 20) || '新IP形象';
+          await saveUserIPCharacter(request.userId, characterName, finalImageUrl);
+          console.log(`IP Character saved for user ${request.userId}`);
+        } catch (saveError) {
+            console.error('保存用户IP形象失败:', saveError);
+            // Decide if this should fail the whole task. For now, we'll log it and continue.
         }
       }
 
@@ -155,7 +187,7 @@ export const checkTaskStatus = async (taskId: string): Promise<TaskStatusRespons
 };
 
 // Polling function for task completion
-export const pollTaskCompletion = async (taskId: string, maxAttempts: number = 60): Promise<TaskStatusResponse> => {
+export const pollTaskCompletion = async (taskId: string, maxAttempts = 60): Promise<TaskStatusResponse> => {
   return new Promise((resolve) => {
     let attempts = 0;
     
@@ -218,6 +250,9 @@ export const generateIPCharacter = async (request: AIGenerationRequest): Promise
     formData.append('n', '1');
     if (request.image instanceof File) {
       formData.append('image', request.image);
+    } else if (request.image instanceof Blob) {
+      // Handle Blob objects (from fetch responses)
+      formData.append('image', request.image, 'image.png');
     } else if (typeof request.image === 'string' && request.image.startsWith('data:image/')) {
       // base64转Blob
       const arr = request.image.split(',');
@@ -320,83 +355,13 @@ export const validateImageFile = (file: File): { valid: boolean; error?: string 
 
 // Multi-view generation (left and back views)
 export const generateMultiViews = async (originalImageUrl: string, prompt: string, userId?: string): Promise<{ leftViewTaskId: string; backViewTaskId: string }> => {
-  try {
-    // Create tasks for left and back views
-    const leftViewTask = await createGenerationTask(
-      'multi_view',
-      `Generate left side view of: ${prompt}`,
-      originalImageUrl,
-      userId
-    );
+  const leftViewTask = await createGenerationTask('multi_view', `左视图: ${prompt}`, originalImageUrl, userId);
+  const backViewTask = await createGenerationTask('multi_view', `后视图: ${prompt}`, originalImageUrl, userId);
 
-    const backViewTask = await createGenerationTask(
-      'multi_view', 
-      `Generate back view of: ${prompt}`,
-      originalImageUrl,
-      userId
-    );
+  processGenerationTask(leftViewTask.id, { image: originalImageUrl, prompt: `生成左视图: ${prompt}` });
+  processGenerationTask(backViewTask.id, { image: originalImageUrl, prompt: `生成后视图: ${prompt}` });
 
-    // Start background processing for both views
-    processMultiViewTask(leftViewTask.id, originalImageUrl, `从左侧角度展示这个IP形象：${prompt}`);
-    processMultiViewTask(backViewTask.id, originalImageUrl, `从背后角度展示这个IP形象：${prompt}`);
-
-    return {
-      leftViewTaskId: leftViewTask.id,
-      backViewTaskId: backViewTask.id
-    };
-  } catch (error) {
-    throw new Error(`创建多视图任务失败: ${error instanceof Error ? error.message : '未知错误'}`);
-  }
-};
-
-const processMultiViewTask = async (taskId: string, originalImageUrl: string, prompt: string) => {
-  try {
-    await updateGenerationTask(taskId, { status: 'processing' });
-
-    // Fetch original image
-    const imageResponse = await fetch(originalImageUrl);
-    const imageBlob = await imageResponse.blob();
-
-    // Create generation request
-    const request: AIGenerationRequest = {
-      image: imageBlob as File,
-      prompt: prompt,
-      model: 'gpt-image-1'
-    };
-
-    const result = await generateIPCharacter(request);
-
-    if (result.success && result.data?.url) {
-      let finalImageUrl = result.data.url;
-      
-      // Upload to Supabase if needed
-      if (!result.data.url.startsWith('data:')) {
-        try {
-          const response = await fetch(result.data.url);
-          const blob = await response.blob();
-          const fileName = `multi_view_${taskId}.png`;
-          finalImageUrl = await uploadImageToSupabase(blob, fileName);
-        } catch (uploadError) {
-          console.warn('图片上传到Supabase失败，使用原始URL:', uploadError);
-        }
-      }
-
-      await updateGenerationTask(taskId, {
-        status: 'completed',
-        result_image_url: finalImageUrl
-      });
-    } else {
-      await updateGenerationTask(taskId, {
-        status: 'failed',
-        error_message: result.error || '多视图生成失败'
-      });
-    }
-  } catch (error) {
-    await updateGenerationTask(taskId, {
-      status: 'failed',
-      error_message: error instanceof Error ? error.message : '未知错误'
-    });
-  }
+  return { leftViewTaskId: leftViewTask.id, backViewTaskId: backViewTask.id };
 };
 
 // Merchandise generation
@@ -405,84 +370,21 @@ export const generateMerchandise = async (
   prompt: string,
   userId?: string
 ): Promise<{ taskIds: Record<string, string> }> => {
-  const merchandiseTypes = [
-    { type: 'keychain', prompt: '钥匙扣周边产品设计' },
-    { type: 'fridge_magnet', prompt: '冰箱贴周边产品设计' },
-    { type: 'handbag', prompt: '手提袋周边产品设计' },
-    { type: 'phone_case', prompt: '手机壳周边产品设计' }
-  ];
+  const merchandiseTypes = {
+    tshirt: 'T恤',
+    mug: '马克杯',
+    phoneCase: '手机壳'
+  };
 
   const taskIds: Record<string, string> = {};
 
-  try {
-    for (const merchandise of merchandiseTypes) {
-      const task = await createGenerationTask(
-        'merchandise',
-        `${merchandise.prompt}: ${prompt}`,
-        originalImageUrl,
-        userId
-      );
-
-      taskIds[merchandise.type] = task.id;
-      
-      // Start background processing
-      processMerchandiseTask(task.id, originalImageUrl, `将这个IP形象设计成${merchandise.prompt}，保持原有风格和特色：${prompt}`);
-    }
-
-    return { taskIds };
-  } catch (error) {
-    throw new Error(`创建周边商品任务失败: ${error instanceof Error ? error.message : '未知错误'}`);
+  for (const [type, name] of Object.entries(merchandiseTypes)) {
+    const task = await createGenerationTask('merchandise', `周边商品 ${name}: ${prompt}`, originalImageUrl, userId);
+    processGenerationTask(task.id, { image: originalImageUrl, prompt: `将IP形象应用到${name}上: ${prompt}` });
+    taskIds[type] = task.id;
   }
-};
 
-const processMerchandiseTask = async (taskId: string, originalImageUrl: string, prompt: string) => {
-  try {
-    await updateGenerationTask(taskId, { status: 'processing' });
-
-    // Fetch original image
-    const imageResponse = await fetch(originalImageUrl);
-    const imageBlob = await imageResponse.blob();
-
-    // Create generation request
-    const request: AIGenerationRequest = {
-      image: imageBlob as File,
-      prompt: prompt,
-      model: 'gpt-image-1'
-    };
-
-    const result = await generateIPCharacter(request);
-
-    if (result.success && result.data?.url) {
-      let finalImageUrl = result.data.url;
-      
-      // Upload to Supabase if needed
-      if (!result.data.url.startsWith('data:')) {
-        try {
-          const response = await fetch(result.data.url);
-          const blob = await response.blob();
-          const fileName = `merchandise_${taskId}.png`;
-          finalImageUrl = await uploadImageToSupabase(blob, fileName);
-        } catch (uploadError) {
-          console.warn('图片上传到Supabase失败，使用原始URL:', uploadError);
-        }
-      }
-
-      await updateGenerationTask(taskId, {
-        status: 'completed',
-        result_image_url: finalImageUrl
-      });
-    } else {
-      await updateGenerationTask(taskId, {
-        status: 'failed',
-        error_message: result.error || '周边商品生成失败'
-      });
-    }
-  } catch (error) {
-    await updateGenerationTask(taskId, {
-      status: 'failed',
-      error_message: error instanceof Error ? error.message : '未知错误'
-    });
-  }
+  return { taskIds };
 };
 
 // Generate 3D model from IP character views
@@ -493,24 +395,16 @@ export const generate3DModel = async (
   prompt?: string,
   userId?: string
 ): Promise<string> => {
-  try {
-    // Create 3D model generation task
-    const task = await createGenerationTask(
-      '3d_model',
-      `Generate 3D model: ${prompt || 'IP character'}`,
-      frontViewUrl,
-      userId
-    );
+    const modelTask = await createGenerationTask('3d_model', prompt || '3D模型生成', frontViewUrl, userId);
 
-    // Start background processing
-    process3DModelTask(task.id, frontViewUrl, leftViewUrl, backViewUrl, prompt);
+    // This is a simplified flow. The actual 3D model generation is a complex async process.
+    // We trigger a background task here.
+    process3DModelTask(modelTask.id, frontViewUrl, leftViewUrl, backViewUrl, prompt);
 
-    return task.id;
-  } catch (error) {
-    throw new Error(`创建3D模型任务失败: ${error instanceof Error ? error.message : '未知错误'}`);
-  }
+    return modelTask.id;
 };
 
+// This would be the background processor for the 3D model task.
 const process3DModelTask = async (
   taskId: string,
   frontViewUrl: string,
@@ -523,11 +417,12 @@ const process3DModelTask = async (
 
     let modelUrl: string;
 
+    // Here you would integrate with a real 3D generation service like Tripo3D
     if (leftViewUrl && backViewUrl) {
-      // Use multi-view generation if all views are available
+      console.log('Generating 3D model from three views...');
       modelUrl = await generate3DModelFromViews(frontViewUrl, leftViewUrl, backViewUrl);
     } else {
-      // Use single image generation
+      console.log('Generating 3D model from a single image...');
       modelUrl = await generate3DModelFromImage(frontViewUrl, prompt);
     }
 

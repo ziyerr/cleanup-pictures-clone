@@ -116,7 +116,7 @@ export const getGenerationTask = async (taskId: string): Promise<GenerationTask 
 export const uploadImageToSupabase = async (
   imageBlob: Blob,
   fileName: string,
-  bucket: string = 'generated-images'
+  bucket = 'generated-images'
 ): Promise<string> => {
   const { data, error } = await supabase.storage
     .from(bucket)
@@ -248,5 +248,31 @@ export const saveUserIPCharacter = async (
       throw err;
     }
     throw new Error(`保存IP形象失败: ${String(err)}`);
+  }
+};
+
+export const getUserIPCharacters = async (userId: string): Promise<UserIPCharacter[]> => {
+  try {
+    console.log(`正在为用户 ${userId} 获取IP形象列表`);
+
+    const { data, error } = await supabase
+      .from('user_ip_characters')
+      .select('*')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error('获取用户IP形象列表失败:', error);
+      throw new Error(`获取IP形象列表失败: ${error.message}`);
+    }
+
+    console.log(`成功获取 ${data.length} 个IP形象`);
+    return data;
+  } catch (err) {
+    console.error('getUserIPCharacters 捕获错误:', err);
+    if (err instanceof Error) {
+      throw err;
+    }
+    throw new Error(`获取IP形象列表失败: ${String(err)}`);
   }
 };
