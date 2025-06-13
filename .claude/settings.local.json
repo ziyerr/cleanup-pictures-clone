@@ -5,7 +5,17 @@
       "Bash(npm run lint)",
       "Bash(npx tsc:*)",
       "Bash(npm run dev:*)",
-      "Bash(npm install:*)"
+      "Bash(npm install:*)",
+      "Bash(npx biome lint:*)",
+      "Bash(npm run build:*)",
+      "Bash(pkill:*)",
+      "Bash(lsof:*)",
+      "Bash(PORT=3001 npm run dev)",
+      "WebFetch(domain:platform.tripo3d.ai)",
+      "Bash(ls:*)",
+      "Bash(curl:*)",
+      "Bash(grep:*)",
+      "WebFetch(domain:ismaque.org)"
     ],
     "deny": []
   }
