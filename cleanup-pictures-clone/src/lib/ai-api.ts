@@ -432,6 +432,13 @@ export const generateIPCharacter = async (request: AIGenerationRequest): Promise
         throw new Error('图片文件过大，请选择更小的图片');
       } else if (response.status === 429) {
         throw new Error('请求过于频繁，请稍后重试');
+      } else if (response.status === 503) {
+        // 特殊处理503错误，提供更具体的信息
+        if (errorText.includes('均无可用渠道')) {
+          throw new Error('AI图像生成服务暂时维护中，请稍后重试或联系客服');
+        } else {
+          throw new Error('图像生成服务暂时不可用，请稍后重试');
+        }
       } else if (response.status >= 500) {
         throw new Error('服务器暂时不可用，请稍后重试');
       } else {

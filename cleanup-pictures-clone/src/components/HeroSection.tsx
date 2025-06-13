@@ -5,6 +5,7 @@ import { Button } from './ui/button';
 import { Upload, ArrowDown, Wand2, X, Loader2, CheckCircle, AlertCircle, Sparkles } from 'lucide-react';
 import { generateIPCharacter, validateImageFile } from '../lib/ai-api';
 import AuthModal from './AuthModal';
+import ServiceStatusBanner from './ServiceStatusBanner';
 import { saveUserIPCharacter, type AuthUser } from '../lib/supabase';
 import { useUser } from '../contexts/UserContext';
 import { useRouter } from 'next/navigation';
@@ -20,6 +21,7 @@ export default function HeroSection() {
   const [encouragingMessage, setEncouragingMessage] = useState('');
   const [selectedPresetId, setSelectedPresetId] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [showServiceBanner, setShowServiceBanner] = useState(false);
   const { currentUser, setCurrentUser, isLoading } = useUser();
   const router = useRouter();
 
@@ -252,7 +254,13 @@ export default function HeroSection() {
         }
       } else {
         // 简化错误处理，直接显示API返回的错误信息
-        setError(result.error || '生成失败，请稍后重试');
+        const errorMessage = result.error || '生成失败，请稍后重试';
+        setError(errorMessage);
+
+        // 如果是服务维护错误，显示状态横幅
+        if (errorMessage.includes('维护中') || errorMessage.includes('暂时不可用')) {
+          setShowServiceBanner(true);
+        }
       }
     } catch (error) {
       console.error('生成过程中出错:', error);
@@ -395,8 +403,18 @@ export default function HeroSection() {
             )}
           </div>
 
+          {/* Service Status Banner */}
+          {showServiceBanner && (
+            <ServiceStatusBanner
+              onRetry={() => {
+                setShowServiceBanner(false);
+                setError(null);
+              }}
+            />
+          )}
+
           {/* Error Display */}
-          {error && (
+          {error && !showServiceBanner && (
             <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex items-center space-x-3">
               <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0" />
               <p className="text-red-700 text-sm">{error}</p>
