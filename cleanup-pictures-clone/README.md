@@ -1,3 +1,9 @@
+# IP角色AI批量生成系统
+
+基于Next.js 15的IP角色AI批量生成系统，支持多视图生成、3D建模和周边商品设计。
+
+🚀 **部署状态**: 已修复所有TypeScript错误，准备生产环境部署
+
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
 ## Getting Started
