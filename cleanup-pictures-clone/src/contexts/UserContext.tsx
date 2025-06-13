@@ -1,11 +1,12 @@
 "use client";
 
 import { createContext, useContext, useState, useEffect, type ReactNode } from 'react';
-import type { User } from '../lib/supabase';
+import type { AuthUser } from '../lib/supabase';
 
 interface UserContextType {
-  currentUser: User | null;
-  setCurrentUser: (user: User | null) => void;
+  currentUser: AuthUser | null;
+  setCurrentUser: (user: AuthUser | null) => void;
+  logout: () => void;
   isLoading: boolean;
   isMounted: boolean;
 }
@@ -13,7 +14,7 @@ interface UserContextType {
 const UserContext = createContext<UserContextType | undefined>(undefined);
 
 export function UserProvider({ children }: { children: ReactNode }) {
-  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [currentUser, setCurrentUser] = useState<AuthUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isMounted, setIsMounted] = useState(false);
 
@@ -59,7 +60,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
   }, []);
 
   // Custom setCurrentUser that also updates localStorage
-  const updateCurrentUser = (user: User | null) => {
+  const updateCurrentUser = (user: AuthUser | null) => {
     setCurrentUser(user);
     
     // Only access localStorage on client side
@@ -82,10 +83,15 @@ export function UserProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const logout = () => {
+    updateCurrentUser(null);
+  };
+
   return (
     <UserContext.Provider value={{ 
       currentUser, 
       setCurrentUser: updateCurrentUser,
+      logout,
       isLoading,
       isMounted
     }}>

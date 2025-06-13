@@ -63,7 +63,7 @@ export default function MerchandiseShowcase({
         const { status, result_image_url, result_data, error_message } = response.task;
         
         if (status === 'completed') {
-          const result = result_image_url || result_data?.model_url;
+          const result = result_image_url || (result_data?.model_url as string);
           updateTaskStatus(taskId, 'completed', result);
           setCompletedCount(prev => prev + 1);
         } else if (status === 'failed') {

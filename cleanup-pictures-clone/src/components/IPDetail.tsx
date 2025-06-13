@@ -1,20 +1,68 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { Share2, Download, Edit, Trash2, Eye, ExternalLink, Play } from 'lucide-react';
+import { useState, useEffect, useCallback } from 'react';
+import { Share2, Download, Edit, Trash2, Eye, ExternalLink, Play, Pencil, Check, Loader2 as Loader, AlertCircle } from 'lucide-react';
 import { UserIPCharacter } from '../lib/supabase';
-import MerchandiseShowcase from './MerchandiseShowcase';
+import MerchandiseGenerationModal from './MerchandiseGenerationModal';
+import TaskListModal from './TaskListModal';
+import IPImage from './IPImage';
 import { useUser } from '../contexts/UserContext';
 
 interface IPDetailProps {
   ipCharacter: UserIPCharacter;
   onBack: () => void;
+  onUpdate: (updatedCharacter: UserIPCharacter) => void;
 }
 
-export default function IPDetail({ ipCharacter, onBack }: IPDetailProps) {
-  const { currentUser, isLoading } = useUser();
+type IPCharacterWithStatus = UserIPCharacter & {
+  initial_task_status: 'pending' | 'processing' | 'completed' | 'failed' | 'unknown';
+  merchandise_task_status: 'pending' | 'processing' | null;
+};
+
+export default function IPDetail({ ipCharacter, onBack, onUpdate }: IPDetailProps) {
+  const { currentUser } = useUser();
   const [showMerchandiseModal, setShowMerchandiseModal] = useState(false);
-  const [activeTab, setActiveTab] = useState<'overview' | 'merchandise' | '3d-model'>('overview');
+  const [showTaskListModal, setShowTaskListModal] = useState(false);
+  const [activeTab, setActiveTab] = useState<'overview' | 'merchandise' | '3d-model'>('merchandise');
+  const [characterStatus, setCharacterStatus] = useState<IPCharacterWithStatus | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isEditingHeaderName, setIsEditingHeaderName] = useState(false);
+  const [isEditingInfoName, setIsEditingInfoName] = useState(false);
+  const [newName, setNewName] = useState(ipCharacter.name);
+  const [isSaving, setIsSaving] = useState(false);
+  const [isGenerating, setIsGenerating] = useState(false);
+
+  const fetchStatus = useCallback(async () => {
+    try {
+      const response = await fetch(`/api/ip/${ipCharacter.id}/status`);
+      if (!response.ok) throw new Error('Failed to fetch status');
+      const data = await response.json();
+      setCharacterStatus(data);
+    } catch (error) {
+      console.error(error);
+      setCharacterStatus(null); // Set to null on error to show error state
+    }
+  }, [ipCharacter.id]);
+
+  // Effect for initial load
+  useEffect(() => {
+    setIsLoading(true);
+    fetchStatus().finally(() => setIsLoading(false));
+  }, [fetchStatus]);
+
+  // Effect for polling
+  useEffect(() => {
+    const shouldPoll = characterStatus?.initial_task_status !== 'completed' || characterStatus?.merchandise_task_status;
+    if (!shouldPoll || isLoading) {
+      return;
+    }
+
+    const intervalId = setInterval(() => {
+      fetchStatus();
+    }, 5000); // Poll every 5 seconds
+
+    return () => clearInterval(intervalId);
+  }, [characterStatus, fetchStatus, isLoading]);
 
   const handleShare = () => {
     const shareUrl = `${window.location.origin}/workshop/shared/${ipCharacter.id}`;
@@ -30,26 +78,150 @@ export default function IPDetail({ ipCharacter, onBack }: IPDetailProps) {
     link.click();
     document.body.removeChild(link);
   };
+  
+  const handleNameSave = async (from: 'header' | 'info') => {
+    if (newName.trim() === '' || newName === ipCharacter.name) {
+      if (from === 'header') setIsEditingHeaderName(false);
+      if (from === 'info') setIsEditingInfoName(false);
+      setNewName(ipCharacter.name);
+      return;
+    }
+    
+    setIsSaving(true);
 
-  const handleGenerateMoreMerchandise = () => {
-    setShowMerchandiseModal(true);
+    try {
+      const response = await fetch(`/api/ip/${ipCharacter.id}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-user-id': currentUser?.id || '',
+        },
+        body: JSON.stringify({ name: newName }),
+      });
+
+      if (!response.ok) {
+        throw new Error('名称更新失败');
+      }
+
+      const updatedCharacter = await response.json();
+      onUpdate(updatedCharacter); 
+      if (from === 'header') setIsEditingHeaderName(false);
+      if (from === 'info') setIsEditingInfoName(false);
+    } catch (error) {
+      console.error('Failed to update IP name:', error);
+      alert('更新失败，请稍后再试。');
+      setNewName(ipCharacter.name);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleGenerateMoreMerchandise = async () => {
+    if (isGenerating || characterStatus?.merchandise_task_status === 'processing') return;
+
+    setIsGenerating(true);
+    try {
+      const response = await fetch(`/api/ip/${ipCharacter.id}/generate-all`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-user-id': currentUser?.id || '',
+        },
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: '生成任务启动失败' }));
+        throw new Error(errorData.error);
+      }
+      
+      // Manually trigger a status fetch to update UI immediately
+      await fetchStatus();
+      
+    } catch (error) {
+      console.error('Failed to start generation task:', error);
+      alert(`启动失败: ${(error as Error).message}`);
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+  
+  const handleViewPublicPage = () => {
+    // Placeholder action
+    alert('即将推出：查看公开分享页面！');
   };
 
   const merchandiseItems = ipCharacter.merchandise_urls ? Object.entries(ipCharacter.merchandise_urls) : [];
+
+  const renderActionButton = () => {
+    if (isLoading) {
+      return (
+        <div className="flex items-center justify-center gap-2 w-full px-4 py-3 text-gray-500 bg-gray-100 rounded-lg">
+          <Loader className="w-5 h-5 animate-spin" />
+          <span className="font-semibold">正在加载状态...</span>
+        </div>
+      );
+    }
+
+    if (!characterStatus || characterStatus.initial_task_status === 'unknown') {
+       return (
+        <div className="flex items-center justify-center gap-2 w-full px-4 py-3 text-red-700 bg-red-100 rounded-lg">
+          <AlertCircle className="w-5 h-5" />
+          <span className="font-semibold">无法获取IP状态</span>
+        </div>
+      );
+    }
+    
+    // As per request, hide button when initial generation is complete.
+    if (characterStatus.initial_task_status === 'completed') {
+      return null;
+    }
+
+    // When merchandise is being created
+    if (characterStatus.merchandise_task_status) {
+      return (
+        <button
+          onClick={() => setShowTaskListModal(true)}
+          className="flex items-center justify-center gap-2 w-full px-4 py-3 text-white bg-yellow-500 rounded-lg hover:bg-yellow-600 transition-colors animate-pulse"
+        >
+          <Loader className="w-5 h-5" />
+          <span className="font-semibold">IP周边创作中</span>
+        </button>
+      );
+    }
+    
+    // Default button state
+    return (
+      <button
+        onClick={() => setShowMerchandiseModal(true)}
+        className="flex items-center justify-center gap-2 w-full px-4 py-3 text-white bg-gray-800 rounded-lg hover:bg-gray-900 transition-colors"
+      >
+        <Play className="w-5 h-5" />
+        <span className="font-semibold">一键生成IP周边</span>
+      </button>
+    );
+  };
 
   return (
     <div className="space-y-6">
       {/* Header Actions */}
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">{ipCharacter.name}</h1>
-          <p className="text-gray-600 mt-1">
-            创建于 {new Date(ipCharacter.created_at).toLocaleDateString('zh-CN', {
-              year: 'numeric',
-              month: 'long',
-              day: 'numeric'
-            })}
-          </p>
+        <div className="flex items-center gap-2">
+          {isEditingHeaderName ? (
+            <input
+              type="text"
+              value={newName}
+              onChange={(e) => setNewName(e.target.value)}
+              onBlur={() => handleNameSave('header')}
+              onKeyDown={(e) => e.key === 'Enter' && handleNameSave('header')}
+              className="text-3xl font-bold text-gray-900 bg-gray-100 rounded-md px-2 -mx-2"
+              autoFocus
+            />
+          ) : (
+            <h1 className="text-3xl font-bold text-gray-900">{ipCharacter.name}</h1>
+          )}
+          <button onClick={() => !isSaving && setIsEditingHeaderName(!isEditingHeaderName)} className="text-gray-400 hover:text-gray-700 disabled:opacity-50 flex-shrink-0" disabled={isSaving}>
+            {isSaving && isEditingHeaderName ? <Loader className="w-5 h-5 animate-spin" /> : isEditingHeaderName ? <Check className="w-6 h-6" /> : <Pencil className="w-5 h-5" />}
+          </button>
         </div>
         
         <div className="flex items-center gap-3">
@@ -66,10 +238,6 @@ export default function IPDetail({ ipCharacter, onBack }: IPDetailProps) {
           >
             <Download className="w-4 h-4" />
             下载
-          </button>
-          <button className="flex items-center gap-2 px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors">
-            <Edit className="w-4 h-4" />
-            编辑
           </button>
         </div>
       </div>
@@ -116,7 +284,7 @@ export default function IPDetail({ ipCharacter, onBack }: IPDetailProps) {
           {/* Main Image */}
           <div className="space-y-6">
             <div className="aspect-square bg-gray-100 rounded-2xl overflow-hidden">
-              <img
+              <IPImage
                 src={ipCharacter.main_image_url}
                 alt={ipCharacter.name}
                 className="w-full h-full object-cover"
@@ -130,7 +298,7 @@ export default function IPDetail({ ipCharacter, onBack }: IPDetailProps) {
                 <div className="grid grid-cols-2 gap-4">
                   {ipCharacter.left_view_url && (
                     <div className="aspect-square bg-gray-100 rounded-lg overflow-hidden">
-                      <img
+                      <IPImage
                         src={ipCharacter.left_view_url}
                         alt="左视图"
                         className="w-full h-full object-cover"
@@ -140,7 +308,7 @@ export default function IPDetail({ ipCharacter, onBack }: IPDetailProps) {
                   )}
                   {ipCharacter.back_view_url && (
                     <div className="aspect-square bg-gray-100 rounded-lg overflow-hidden">
-                      <img
+                      <IPImage
                         src={ipCharacter.back_view_url}
                         alt="后视图"
                         className="w-full h-full object-cover"
@@ -158,10 +326,27 @@ export default function IPDetail({ ipCharacter, onBack }: IPDetailProps) {
             {/* Basic Info */}
             <div className="bg-white p-6 rounded-xl border border-gray-200">
               <h3 className="text-lg font-semibold text-gray-900 mb-4">基本信息</h3>
-              <dl className="space-y-3">
+              <dl className="space-y-4">
                 <div>
-                  <dt className="text-sm font-medium text-gray-500">名称</dt>
-                  <dd className="text-sm text-gray-900">{ipCharacter.name}</dd>
+                  <dt className="text-sm font-medium text-gray-500 mb-1">名称</dt>
+                  <dd className="text-sm text-gray-900 flex items-center gap-2">
+                    {isEditingInfoName ? (
+                       <input
+                         type="text"
+                         value={newName}
+                         onChange={(e) => setNewName(e.target.value)}
+                         onBlur={() => handleNameSave('info')}
+                         onKeyDown={(e) => e.key === 'Enter' && handleNameSave('info')}
+                         className="flex-grow text-sm bg-gray-100 rounded-md px-2 py-1"
+                         autoFocus
+                       />
+                    ) : (
+                      <span className="flex-grow">{ipCharacter.name}</span>
+                    )}
+                     <button onClick={() => !isSaving && setIsEditingInfoName(!isEditingInfoName)} className="text-gray-400 hover:text-gray-700 disabled:opacity-50 flex-shrink-0" disabled={isSaving}>
+                        {isSaving && isEditingInfoName ? <Loader className="w-4 h-4 animate-spin" /> : isEditingInfoName ? <Check className="w-4 h-4" /> : <Pencil className="w-4 h-4" />}
+                     </button>
+                  </dd>
                 </div>
                 <div>
                   <dt className="text-sm font-medium text-gray-500">创建时间</dt>
@@ -199,18 +384,15 @@ export default function IPDetail({ ipCharacter, onBack }: IPDetailProps) {
 
             {/* Actions */}
             <div className="bg-white p-6 rounded-xl border border-gray-200">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">快速操作</h3>
-              <div className="space-y-3">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">操作</h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {renderActionButton()}
                 <button
-                  onClick={handleGenerateMoreMerchandise}
-                  className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-cleanup-green text-black font-medium rounded-lg hover:bg-green-400 transition-colors"
+                  onClick={handleViewPublicPage}
+                  className="flex items-center justify-center gap-2 w-full px-4 py-3 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
                 >
-                  <Play className="w-4 h-4" />
-                  生成更多周边
-                </button>
-                <button className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-purple-100 text-purple-700 font-medium rounded-lg hover:bg-purple-200 transition-colors">
-                  <ExternalLink className="w-4 h-4" />
-                  查看公开页面
+                  <Eye className="w-5 h-5" />
+                  <span className="font-semibold">查看公开页面</span>
                 </button>
               </div>
             </div>
@@ -224,10 +406,15 @@ export default function IPDetail({ ipCharacter, onBack }: IPDetailProps) {
             <h3 className="text-xl font-semibold text-gray-900">周边商品</h3>
             <button
               onClick={handleGenerateMoreMerchandise}
-              className="flex items-center gap-2 px-4 py-2 bg-cleanup-green text-black font-medium rounded-lg hover:bg-green-400 transition-colors"
+              disabled={isGenerating || characterStatus?.merchandise_task_status === 'processing'}
+              className="flex items-center gap-2 px-4 py-2 bg-cleanup-green text-black font-medium rounded-lg hover:bg-green-400 transition-colors disabled:opacity-50"
             >
-              <Play className="w-4 h-4" />
-              生成更多
+              {isGenerating || characterStatus?.merchandise_task_status === 'processing' ? (
+                <Loader className="w-4 h-4 animate-spin" />
+              ) : (
+                <Play className="w-4 h-4" />
+              )}
+              {isGenerating ? '请求中...' : characterStatus?.merchandise_task_status === 'processing' ? '生成中...' : '生成更多'}
             </button>
           </div>
 
@@ -239,10 +426,23 @@ export default function IPDetail({ ipCharacter, onBack }: IPDetailProps) {
               <h3 className="text-lg font-medium text-gray-900 mb-2">还没有周边商品</h3>
               <p className="text-gray-600 mb-6">开始为您的IP形象生成精美的周边商品吧！</p>
               <button
-                onClick={handleGenerateMoreMerchandise}
-                className="px-6 py-3 bg-cleanup-green text-black font-semibold rounded-xl hover:bg-green-400 transition-colors"
+                onClick={() => setShowMerchandiseModal(true)}
+                disabled={isGenerating || characterStatus?.merchandise_task_status === 'processing'}
+                className="px-6 py-3 bg-cleanup-green text-black font-semibold rounded-xl hover:bg-green-400 transition-colors disabled:opacity-50"
               >
-                立即生成
+                {isGenerating ? (
+                  <span className="flex items-center justify-center">
+                    <Loader className="w-5 h-5 mr-2 animate-spin" />
+                    请求中...
+                  </span>
+                ) : characterStatus?.merchandise_task_status === 'processing' ? (
+                   <span className="flex items-center justify-center">
+                    <Loader className="w-5 h-5 mr-2 animate-spin" />
+                    生成中...
+                  </span>
+                ) : (
+                  '立即生成'
+                )}
               </button>
             </div>
           ) : (
@@ -334,14 +534,21 @@ export default function IPDetail({ ipCharacter, onBack }: IPDetailProps) {
       )}
 
       {/* Merchandise Generation Modal */}
-      {showMerchandiseModal && currentUser && !isLoading && (
-        <MerchandiseShowcase
-          originalImageUrl={ipCharacter.main_image_url}
-          prompt={`为IP形象"${ipCharacter.name}"生成周边商品`}
-          userId={currentUser.id}
-          onClose={() => setShowMerchandiseModal(false)}
-        />
-      )}
+      <MerchandiseGenerationModal
+        isOpen={showMerchandiseModal}
+        onClose={() => setShowMerchandiseModal(false)}
+        characterId={ipCharacter.id}
+        characterName={ipCharacter.name}
+        characterImageUrl={ipCharacter.main_image_url}
+        characterDescription={ipCharacter.description}
+      />
+
+      {/* Task List Modal */}
+      <TaskListModal
+        isOpen={showTaskListModal}
+        onClose={() => setShowTaskListModal(false)}
+        characterId={ipCharacter.id}
+      />
     </div>
   );
 }

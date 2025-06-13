@@ -3,8 +3,9 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { Button } from './ui/button';
-import { Menu, User, X, LogOut, Palette, ChevronDown } from 'lucide-react';
+import { Menu, User, X, LogOut, Palette, ChevronDown, ListTodo } from 'lucide-react';
 import AuthModal from './AuthModal';
+import TaskListModal from './TaskListModal';
 import { useUser } from '../contexts/UserContext';
 import { clearUserData } from '../lib/auth-utils';
 
@@ -13,6 +14,7 @@ export default function Header() {
   const [activeSection, setActiveSection] = useState('');
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
+  const [showTaskListModal, setShowTaskListModal] = useState(false);
   const { currentUser, setCurrentUser, isLoading } = useUser();
 
   const navItems = [
@@ -213,6 +215,16 @@ export default function Header() {
                           我的IP工坊
                         </Link>
                         <button
+                          onClick={() => {
+                            setShowTaskListModal(true);
+                            setShowUserMenu(false);
+                          }}
+                          className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                        >
+                          <ListTodo className="w-4 h-4 mr-2" />
+                          任务列表
+                        </button>
+                        <button
                           onClick={handleLogout}
                           className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                         >
@@ -327,6 +339,12 @@ export default function Header() {
           setShowAuthModal(false);
           setIsMobileMenuOpen(false); // 关闭移动端菜单
         }}
+      />
+
+      {/* Task List Modal */}
+      <TaskListModal
+        isOpen={showTaskListModal}
+        onClose={() => setShowTaskListModal(false)}
       />
     </header>
   );

@@ -2,12 +2,12 @@
 
 import { useState } from "react";
 import { Button } from "./ui/button";
-import { registerUser, loginUser, type User } from "../lib/supabase";
+import { registerUser, loginUser, logoutUser, getCurrentUser, type AuthUser } from "../lib/supabase";
 
 interface AuthModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSuccess: (user: User) => void;
+  onSuccess: (user: AuthUser) => void;
 }
 
 export default function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps) {
@@ -24,7 +24,7 @@ export default function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps
     setError('');
 
     try {
-      let user: User;
+      let user: AuthUser;
       
       if (mode === 'register') {
         user = await registerUser(username, password, email || undefined);

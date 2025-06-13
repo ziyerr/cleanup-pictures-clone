@@ -66,4 +66,7 @@
 - **依赖**：Tailwind CSS、lucide-react、@stagewise/toolbar-next 等
 - **业务特性**：支持图片上传、AI 生成、风格选择、周边定制等功能
 
+
 详细说明可参考 [README.md](mdc:../../README.md)
+- 每次完成代码修改后，都自动执行 `cd cleanup-pictures-clone && npm run dev` 命令，确保代码修改正确。
+- 每次对话都是调用mcp-feedback-enhanced工具，确保代码修改正确。

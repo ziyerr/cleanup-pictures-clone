@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { Plus, Search, Filter, Grid, List, Share2, Download, Eye } from 'lucide-react';
 import { UserIPCharacter } from '../lib/supabase';
+import IPImage from './IPImage';
 
 interface IPGalleryProps {
   userIPs: UserIPCharacter[];
@@ -186,7 +187,7 @@ export default function IPGallery({ userIPs, loading, onIPSelect, onRefresh }: I
               }`}
             >
               <div className={viewMode === 'grid' ? 'aspect-square relative' : 'w-20 h-20 flex-shrink-0'}>
-                <img
+                <IPImage
                   src={ip.main_image_url}
                   alt={ip.name}
                   className={`w-full h-full object-cover ${viewMode === 'grid' ? '' : 'rounded-lg'}`}

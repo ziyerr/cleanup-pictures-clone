@@ -18,7 +18,7 @@ export interface Tripo3DTask {
   task_id: string;
   type: string;
   status: 'queued' | 'running' | 'success' | 'failed';
-  input: Record<string, any>;
+  input: Record<string, unknown>;
   output?: {
     model?: string;
     rendered_image?: string;

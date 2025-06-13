@@ -11,7 +11,7 @@ import {
   generate3DModel,
   type AIGenerationRequest 
 } from "../lib/ai-api";
-import { saveUserIPCharacter, type User } from "../lib/supabase";
+import { saveUserIPCharacter, type AuthUser } from "../lib/supabase";
 
 interface IPGenerationFlowProps {
   image: File | string;
@@ -19,7 +19,7 @@ interface IPGenerationFlowProps {
 }
 
 export default function IPGenerationFlow({ image, prompt }: IPGenerationFlowProps) {
-  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [currentUser, setCurrentUser] = useState<AuthUser | null>(null);
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [pendingMerchandiseGeneration, setPendingMerchandiseGeneration] = useState(false);
   const [generationState, setGenerationState] = useState<{
@@ -48,7 +48,7 @@ export default function IPGenerationFlow({ image, prompt }: IPGenerationFlowProp
   });
 
   // Execute merchandise generation process
-  const executeMerchandiseGeneration = useCallback(async (user: User) => {
+  const executeMerchandiseGeneration = useCallback(async (user: AuthUser) => {
     if (!generationState.imageUrl) {
       alert('请先生成IP形象');
       return;
@@ -118,7 +118,7 @@ export default function IPGenerationFlow({ image, prompt }: IPGenerationFlowProp
       if (model3DTaskId) {
         const model3DStatus = await pollTaskCompletion(model3DTaskId);
         if (model3DStatus.task?.result_data?.model_url) {
-          model3DUrl = model3DStatus.task.result_data.model_url;
+          model3DUrl = model3DStatus.task.result_data.model_url as string;
         }
       }
 
