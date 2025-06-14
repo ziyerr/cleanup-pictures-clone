@@ -258,7 +258,7 @@ export default function HeroSection() {
         setError(errorMessage);
 
         // 如果是服务维护错误，显示状态横幅
-        if (errorMessage.includes('维护中') || errorMessage.includes('暂时不可用')) {
+        if (errorMessage.includes('维护中') || errorMessage.includes('暂时不可用') || errorMessage.includes('Service Unavailable')) {
           setShowServiceBanner(true);
         }
       }

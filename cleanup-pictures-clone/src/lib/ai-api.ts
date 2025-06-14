@@ -43,11 +43,12 @@ export interface TaskStatusResponse {
   error?: string;
 }
 
-// API Configuration - 麻雀API配置
+// API Configuration - APICore配置
 const AI_API_CONFIG = {
-  apiKey: 'sk-1eEdZF3JuFocE3eyrFBnmE1IgMFwbGcwPfMciRMdxF1Zl8Ke',
-  baseUrl: 'https://ismaque.org/v1',
-  model: 'gpt-image-1'
+  apiKey: process.env.AI_API_KEY || 'sk-1eEdZF3JuFocE3eyrFBnmE1IgMFwbGcwPfMciRMdxF1Zl8Ke',
+  baseUrl: process.env.AI_API_BASE_URL || 'https://ismaque.org/v1',
+  model: process.env.AI_API_MODEL || 'gpt-image-1',
+  endpoint: '/images/edits'
 };
 
 // Alternative API configurations for testing
@@ -379,20 +380,22 @@ export const generateIPCharacter = async (request: AIGenerationRequest): Promise
       }
     }
 
-    // 根据麻雀API文档构建FormData - 使用正确的端点
+    // 根据APICore文档构建FormData - 使用图片编辑端点
     const formData = new FormData();
     formData.append('prompt', fullPrompt);
     formData.append('model', request.model || AI_API_CONFIG.model);
     formData.append('n', '1');
     formData.append('size', '1024x1024');
     formData.append('response_format', 'url');
-    
-    // 如果有图片，添加到FormData
+
+    // 图片编辑API需要image参数（必需）
     if (imageToUpload) {
-      formData.append('image', imageToUpload, 'upload.png');
+      formData.append('image', imageToUpload, 'image.png');
+    } else {
+      throw new Error('图片编辑API需要提供图片文件');
     }
 
-    console.log('发送API请求到:', `${AI_API_CONFIG.baseUrl}/images/edits`);
+    console.log('发送API请求到:', `${AI_API_CONFIG.baseUrl}${AI_API_CONFIG.endpoint}`);
     console.log('请求参数检查:', {
       prompt: fullPrompt.substring(0, 100) + '...',
       model: request.model || AI_API_CONFIG.model,
@@ -407,7 +410,7 @@ export const generateIPCharacter = async (request: AIGenerationRequest): Promise
       controller.abort();
     }, 120000); // 120秒超时
     
-    const response = await fetch(`${AI_API_CONFIG.baseUrl}/images/edits`, {
+    const response = await fetch(`${AI_API_CONFIG.baseUrl}${AI_API_CONFIG.endpoint}`, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${AI_API_CONFIG.apiKey}`,
