@@ -43,29 +43,24 @@ export interface TaskStatusResponse {
   error?: string;
 }
 
-// API Configuration - APICore配置
+// API Configuration - APICore配置 (根据README.md文档更新)
 const AI_API_CONFIG = {
   apiKey: process.env.AI_API_KEY || 'sk-1eEdZF3JuFocE3eyrFBnmE1IgMFwbGcwPfMciRMdxF1Zl8Ke',
-  baseUrl: process.env.AI_API_BASE_URL || 'https://ismaque.org/v1',
-  model: process.env.AI_API_MODEL || 'gpt-image-1',
-  endpoint: '/images/edits'
+  baseUrl: process.env.AI_API_BASE_URL || 'https://ismaque.org/v1', // 使用README中的正确API地址
+  model: process.env.AI_API_MODEL || 'gpt-4o-image', // 更新为README中指定的gpt-4o-image模型
+  endpoint: '/chat/completions' // gpt-4o-image使用chat格式
 };
 
-// Alternative API configurations for testing
-const ALTERNATIVE_CONFIGS = {
-  sparrow: {
+// 配置：完全使用gpt-4o-image模型，不再使用gpt-image-1
+const ALTERNATIVE_CONFIGS = [
+  {
+    name: 'gpt-4o-image',
     apiKey: 'sk-1eEdZF3JuFocE3eyrFBnmE1IgMFwbGcwPfMciRMdxF1Zl8Ke',
-    baseUrl: 'https://api.sparrow.org/v1',  // Alternative base URL
-    endpoint: '/images/generations',         // Alternative endpoint
-    model: 'gpt-image-1'
-  },
-  sparrow2: {
-    apiKey: 'sk-1eEdZF3JuFocE3eyrFBnmE1IgMFwbGcwPfMciRMdxF1Zl8Ke',
-    baseUrl: 'https://ismaque.org',          // Without /v1
-    endpoint: '/api/v1/images/edits',        // Alternative path
-    model: 'gpt-image-1'
+    baseUrl: 'https://ismaque.org/v1',
+    endpoint: '/chat/completions',
+    model: 'gpt-4o-image' // 统一使用gpt-4o-image模型
   }
-};
+];
 
 // Convert File to base64
 const fileToBase64 = (file: File): Promise<string> => {
@@ -347,206 +342,289 @@ export const pollTaskCompletion = async (taskId: string, maxAttempts = 60): Prom
 };
 
 // Original function to generate IP character
+// 生成演示图片 - 当API服务不可用时的备用方案
+const generateDemoImage = async (prompt: string): Promise<string> => {
+  // 创建一个带有用户提示的演示图片
+  return new Promise((resolve) => {
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+    
+    canvas.width = 512;
+    canvas.height = 512;
+    
+    if (ctx) {
+      // 渐变背景
+      const gradient = ctx.createLinearGradient(0, 0, 512, 512);
+      gradient.addColorStop(0, '#ff6b6b');
+      gradient.addColorStop(0.5, '#4ecdc4');
+      gradient.addColorStop(1, '#45b7d1');
+      
+      ctx.fillStyle = gradient;
+      ctx.fillRect(0, 0, 512, 512);
+      
+      // 添加文本
+      ctx.fillStyle = 'white';
+      ctx.font = 'bold 24px Arial';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      
+      // 白色背景矩形
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+      ctx.fillRect(50, 200, 412, 112);
+      
+      // 黑色文本
+      ctx.fillStyle = '#333';
+      ctx.font = 'bold 20px Arial';
+      ctx.fillText('AI生成演示', 256, 230);
+      ctx.font = '16px Arial';
+      ctx.fillText(`提示词: ${prompt.substring(0, 30)}...`, 256, 256);
+      ctx.font = '14px Arial';
+      ctx.fillStyle = '#666';
+      ctx.fillText('这是一个演示图片', 256, 280);
+    }
+    
+    canvas.toBlob((blob) => {
+      if (blob) {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as string);
+        reader.readAsDataURL(blob);
+      } else {
+        resolve('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/5+hHgAHggJ/PchI7wAAAABJRU5ErkJggg==');
+      }
+    }, 'image/png');
+  });
+};
+
+// 使用多个API配置进行故障转移的生成函数
+const tryGenerateWithFallback = async (request: AIGenerationRequest): Promise<AIGenerationResponse> => {
+  const fullPrompt = `创建一个可爱的卡通IP形象，${request.prompt}。要求：1. 卡通风格，适合制作周边产品；2. 简洁明了的设计；3. 温暖友好的表情；4. 适合商业应用的形象设计`;
+  
+  // 尝试所有API配置
+  for (const config of ALTERNATIVE_CONFIGS) {
+    try {
+      console.log(`尝试使用配置: ${config.name}`);
+      
+      // 传递图片参数到API调用
+      const response = await tryAPICall(config, fullPrompt, request.image);
+      if (response) {
+        return response;
+      }
+    } catch (error) {
+      console.log(`配置 ${config.name} 失败:`, error);
+      continue; // 尝试下一个配置
+    }
+  }
+  
+  // 所有API配置都失败，直接抛出错误
+  throw new Error('所有API配置都失败，请检查网络连接或API配额');
+};
+
+// 单个API配置的调用函数 - 根据APICore文档修复
+const tryAPICall = async (config: typeof ALTERNATIVE_CONFIGS[0], prompt: string, imageFile?: File | Blob | string): Promise<AIGenerationResponse | null> => {
+  try {
+    console.log(`尝试API调用 (${config.name}):`, {
+      url: `${config.baseUrl}${config.endpoint}`,
+      model: config.model,
+      prompt: prompt.substring(0, 100) + '...',
+      hasImage: !!imageFile
+    });
+
+    // 构建gpt-4o-image的chat格式请求
+    const messages: any[] = [];
+    
+    if (imageFile) {
+      // 有图片的情况 - 图生图
+      let imageBase64: string;
+      
+      if (typeof imageFile === 'string') {
+        if (imageFile.startsWith('data:image')) {
+          imageBase64 = imageFile;
+        } else {
+          // URL格式，需要下载并转换
+          const response = await fetch(imageFile);
+          if (!response.ok) {
+            throw new Error(`Failed to fetch image: ${response.status}`);
+          }
+          const blob = await response.blob();
+          const buffer = await blob.arrayBuffer();
+          const base64 = btoa(String.fromCharCode(...new Uint8Array(buffer)));
+          imageBase64 = `data:${blob.type};base64,${base64}`;
+        }
+      } else {
+        // File或Blob对象
+        const base64 = await fileToBase64(imageFile as File);
+        const mimeType = (imageFile as File).type || 'image/png';
+        imageBase64 = `data:${mimeType};base64,${base64}`;
+      }
+
+      messages.push({
+        role: "user",
+        content: [
+          {
+            type: "text",
+            text: prompt
+          },
+          {
+            type: "image_url",
+            image_url: {
+              url: imageBase64
+            }
+          }
+        ]
+      });
+    } else {
+      // 纯文生图
+      messages.push({
+        role: "user",
+        content: prompt
+      });
+    }
+
+    const requestBody = {
+      model: config.model,
+      messages: messages,
+      max_tokens: 1000
+    };
+
+    let response;
+    try {
+      response = await fetch(`${config.baseUrl}${config.endpoint}`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${config.apiKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(requestBody),
+        signal: AbortSignal.timeout(120000) // 增加到120秒超时，gpt-4o-image需要更长处理时间
+      });
+    } catch (fetchError) {
+      console.error(`Fetch调用失败 (${config.name}):`, {
+        error: fetchError,
+        message: fetchError instanceof Error ? fetchError.message : '未知fetch错误',
+        type: fetchError instanceof Error ? fetchError.constructor.name : typeof fetchError,
+        url: `${config.baseUrl}${config.endpoint}`
+      });
+      throw fetchError;
+    }
+
+    if (!response.ok) {
+      let errorText = '';
+      try {
+        errorText = await response.text();
+      } catch (textError) {
+        errorText = `无法读取错误响应: ${textError}`;
+      }
+      
+      const errorInfo = {
+        status: response.status,
+        statusText: response.statusText,
+        error: errorText,
+        url: `${config.baseUrl}${config.endpoint}`,
+        model: config.model
+      };
+      
+      console.error(`API调用失败 (${config.name}):`, errorInfo);
+      
+      // 直接抛出错误，不使用演示模式
+      throw new Error(`API调用失败: ${response.status} ${response.statusText} - ${errorText}`);
+    }
+
+    const result = await response.json();
+    console.log(`API响应成功 (${config.name}):`, result);
+    
+    // 解析gpt-4o-image的响应格式
+    if (result.choices && result.choices.length > 0) {
+      const choice = result.choices[0];
+      const content = choice.message?.content;
+      
+      if (content) {
+        // 从响应中提取图片URL
+        const imageUrlMatch = content.match(/!\[.*?\]\((https?:\/\/[^\)]+)\)/);
+        if (imageUrlMatch) {
+          const imageUrl = imageUrlMatch[1];
+          return {
+            success: true,
+            data: {
+              url: imageUrl,
+              id: uuidv4()
+            }
+          };
+        }
+        
+        // 如果没有找到图片URL，检查是否有其他格式的图片链接
+        const urlMatch = content.match(/(https?:\/\/[^\s]+\.(png|jpg|jpeg|webp))/i);
+        if (urlMatch) {
+          return {
+            success: true,
+            data: {
+              url: urlMatch[1],
+              id: uuidv4()
+            }
+          };
+        }
+      }
+    }
+    
+    console.error(`API响应格式错误 (${config.name}):`, result);
+    throw new Error('API响应中未找到有效的图片URL');
+    
+  } catch (error) {
+    console.error(`API调用异常 (${config.name}):`, {
+      error: error,
+      message: error instanceof Error ? error.message : '未知错误',
+      type: error instanceof Error ? error.constructor.name : typeof error
+    });
+    
+    // 直接抛出错误，不使用演示模式
+    throw error;
+  }
+};
+
 export const generateIPCharacter = async (request: AIGenerationRequest): Promise<AIGenerationResponse> => {
   try {
     console.log('开始AI生成请求:', request);
 
-    // 构建基于用户提示的描述
-    const fullPrompt = `创建一个可爱的卡通IP形象，${request.prompt}。要求：1. 卡通风格，适合制作周边产品；2. 简洁明了的设计；3. 温暖友好的表情；4. 适合商业应用的形象设计`;
-
-    console.log('完整提示词:', fullPrompt);
-
-    // 优化图片处理逻辑
-    let imageToUpload: File | Blob | undefined;
-    
-    if (typeof request.image === 'string') {
-      if (request.image.startsWith('data:')) {
-        // Base64 string
-        const blob = await (await fetch(request.image)).blob();
-        imageToUpload = blob;
-      } else {
-        // URL
-        const response = await fetch(request.image);
-        const blob = await response.blob();
-        imageToUpload = blob;
-      }
-    } else {
-      // File or Blob - 应用智能压缩
-      if (request.image instanceof File) {
-        // 对文件进行智能压缩，保持最大精度
-        imageToUpload = await compressImage(request.image, 5120); // 5MB压缩目标
-      } else {
-        imageToUpload = request.image;
-      }
-    }
-
-    // 根据APICore文档构建FormData - 使用图片编辑端点
-    const formData = new FormData();
-    formData.append('prompt', fullPrompt);
-    formData.append('model', request.model || AI_API_CONFIG.model);
-    formData.append('n', '1');
-    formData.append('size', '1024x1024');
-    formData.append('response_format', 'url');
-
-    // 图片编辑API需要image参数（必需）
-    if (imageToUpload) {
-      formData.append('image', imageToUpload, 'image.png');
-    } else {
-      throw new Error('图片编辑API需要提供图片文件');
-    }
-
-    console.log('发送API请求到:', `${AI_API_CONFIG.baseUrl}${AI_API_CONFIG.endpoint}`);
-    console.log('请求参数检查:', {
-      prompt: fullPrompt.substring(0, 100) + '...',
-      model: request.model || AI_API_CONFIG.model,
-      hasImage: !!imageToUpload,
-      imageSize: imageToUpload ? imageToUpload.size : 0
-    });
-
-    // 优化的fetch请求 - 增加超时和错误处理
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => {
-      console.log('请求超时，中止连接');
-      controller.abort();
-    }, 120000); // 120秒超时
-    
-    const response = await fetch(`${AI_API_CONFIG.baseUrl}${AI_API_CONFIG.endpoint}`, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${AI_API_CONFIG.apiKey}`,
-        // 不设置Content-Type，让浏览器自动设置multipart/form-data
-      },
-      body: formData,
-      signal: controller.signal
-    });
-
-    clearTimeout(timeoutId);
-
-    console.log('API Response Status:', response.status);
-    console.log('API Response Headers:', Object.fromEntries(response.headers.entries()));
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('AI生成失败 - Status:', response.status);
-      console.error('AI生成失败 - Response:', errorText);
-      
-      // 根据状态码提供更具体的错误信息
-      if (response.status === 413) {
-        throw new Error('图片文件过大，请选择更小的图片');
-      } else if (response.status === 429) {
-        throw new Error('请求过于频繁，请稍后重试');
-      } else if (response.status === 503) {
-        // 特殊处理503错误，提供更具体的信息
-        if (errorText.includes('均无可用渠道')) {
-          throw new Error('AI图像生成服务暂时维护中，请稍后重试或联系客服');
-        } else {
-          throw new Error('图像生成服务暂时不可用，请稍后重试');
-        }
-      } else if (response.status >= 500) {
-        throw new Error('服务器暂时不可用，请稍后重试');
-      } else {
-        throw new Error('图片生成失败，请检查图片格式后重试');
-      }
-    }
-
-    const result = await response.json();
-    console.log('AI API响应成功，数据长度:', JSON.stringify(result).length);
-    console.log('API完整响应结构:', result);
-
-    // Check if the response is empty or null
-    if (!result || typeof result !== 'object') {
-      console.error('API返回了空响应或非对象响应:', result);
-      throw new Error('服务器响应格式异常');
-    }
-
-    // Handle different possible response formats
-    let imageUrl: string | undefined;
-    let imageId: string | undefined;
-
-    // 添加详细的调试信息
-    console.log('响应字段检查:', {
-      hasData: !!result.data,
-      dataType: Array.isArray(result.data) ? 'array' : typeof result.data,
-      dataLength: Array.isArray(result.data) ? result.data.length : 'not array',
-      firstItem: Array.isArray(result.data) && result.data.length > 0 ? result.data[0] : 'no first item'
-    });
-
-    // Check for base64 data in response FIRST (优先检查base64格式)
-    if (result.data && Array.isArray(result.data) && result.data.length > 0) {
-      const firstItem = result.data[0];
-      console.log('第一个数据项:', firstItem);
-      console.log('数据项字段:', Object.keys(firstItem));
-      
-      // Check for base64 data first
-      if (firstItem.b64_json) {
-        const base64Data = firstItem.b64_json;
-        imageUrl = `data:image/png;base64,${base64Data}`;
-        imageId = firstItem.id || firstItem.image_id || uuidv4();
-        console.log('从base64数据提取:', { hasBase64: !!base64Data, base64Length: base64Data.length, imageId });
-      }
-      // Fallback to URL fields
-      else if (firstItem.url || firstItem.image_url || firstItem.image) {
-        imageUrl = firstItem.url || firstItem.image_url || firstItem.image;
-        imageId = firstItem.id || firstItem.image_id;
-        console.log('从data数组URL字段提取:', { imageUrl, imageId });
-      }
-    }
-    // Check for direct URL response
-    else if (result.url) {
-      imageUrl = result.url;
-      imageId = result.id;
-      console.log('从直接字段提取:', { imageUrl, imageId });
-    }
-    // Check for image field
-    else if (result.image) {
-      imageUrl = result.image;
-      imageId = result.id;
-      console.log('从image字段提取:', { imageUrl, imageId });
-    }
-    // Check for images array
-    else if (result.images && Array.isArray(result.images) && result.images.length > 0) {
-      imageUrl = result.images[0].url || result.images[0];
-      imageId = result.images[0].id;
-      console.log('从images数组提取:', { imageUrl, imageId });
-    }
-
-    if (!imageUrl) {
-      console.error('无法从API响应中提取图片URL');
-      console.error('响应结构:', Object.keys(result));
-      console.error('完整响应数据:', JSON.stringify(result, null, 2));
-      throw new Error('图片生成完成但无法获取结果');
-    }
-
-    console.log('最终提取的图片信息:', { imageUrl: imageUrl.substring(0, 100) + '...', imageId });
-
-    return {
-      success: true,
-      data: {
-        url: imageUrl,
-        id: imageId || uuidv4()
-      }
-    };
+    // 使用故障转移机制
+    return await tryGenerateWithFallback(request);
   } catch (error) {
     console.error('generateIPCharacter错误:', error);
     
     // 简化错误处理，用户友好的错误信息
     if (error instanceof Error) {
-      if (error.name === 'AbortError') {
+      if (error.name === 'AbortError' || error.message.includes('signal timed out')) {
         return {
           success: false,
-          error: '请求超时，请检查网络连接后重试'
+          error: '图片生成超时（120秒），请尝试简化提示词或稍后重试'
         };
       }
       if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError')) {
         return {
           success: false,
-          error: '网络连接中断，请稍后重试'
+          error: '网络连接中断，请检查网络后重试'
         };
       }
       if (error.message.includes('CONNECTION_RESET')) {
         return {
           success: false,
-          error: '连接被重置，请检查图片大小后重试'
+          error: '连接被重置，请检查图片大小（建议小于5MB）后重试'
+        };
+      }
+      if (error.message.includes('503') || error.message.includes('Service Unavailable')) {
+        return {
+          success: false,
+          error: 'API服务暂时不可用，请稍后重试'
+        };
+      }
+      if (error.message.includes('401') || error.message.includes('Unauthorized')) {
+        return {
+          success: false,
+          error: 'API密钥无效，请联系管理员'
+        };
+      }
+      if (error.message.includes('429') || error.message.includes('Too Many Requests')) {
+        return {
+          success: false,
+          error: 'API调用频率过高，请稍后重试'
         };
       }
     }
@@ -558,63 +636,99 @@ export const generateIPCharacter = async (request: AIGenerationRequest): Promise
   }
 };
 
-// Helper to call Sparrow API for various tasks
+// Helper to call Sparrow API for 2D图生2D图 tasks using gpt-4o-image
 async function triggerSparrowGeneration(prompt: string, imageUrl?: string) {
-  const formData = new FormData();
-  formData.append('prompt', prompt);
-  formData.append('model', AI_API_CONFIG.model);
-  formData.append('n', '1');
-  formData.append('size', '1024x1024');
-  formData.append('response_format', 'url');
-  
-  // 确保周边商品生成必须使用基础IP形象图作为输入
-  if (imageUrl) {
-    try {
-      console.log('正在获取基础IP形象图:', imageUrl);
+  if (!imageUrl) {
+    throw new Error('2D图生2D图功能必须提供基础IP形象图作为输入');
+  }
+
+  try {
+    console.log('正在获取基础IP形象图:', imageUrl);
+    
+    // 获取图片并转换为base64
+    let imageBase64: string;
+    if (imageUrl.startsWith('data:image')) {
+      // 如果已经是base64格式，直接使用
+      imageBase64 = imageUrl;
+    } else {
+      // 下载图片并转换为base64
       const response = await fetch(imageUrl);
       if (!response.ok) {
         throw new Error(`Failed to fetch image: ${response.status}`);
       }
       const blob = await response.blob();
-      formData.append('image', blob, 'image.png');
-      console.log('✅ 基础IP形象图已添加到生成请求');
-    } catch (error) {
-      console.error('❌ 无法获取基础IP形象图:', error);
-      throw new Error(`无法获取基础IP形象图: ${error instanceof Error ? error.message : '未知错误'}`);
+      const buffer = await blob.arrayBuffer();
+      const base64 = btoa(String.fromCharCode(...new Uint8Array(buffer)));
+      imageBase64 = `data:${blob.type};base64,${base64}`;
     }
-  } else {
-    // 2D周边图生成必须同时使用基础IP形象图和特定的周边商品提示词
-    throw new Error('2D周边图生成必须提供基础IP形象图作为输入');
-  }
 
-  console.log('发送周边商品生成请求，提示词:', prompt);
-  const response = await fetch(`${AI_API_CONFIG.baseUrl}/images/edits`, {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${AI_API_CONFIG.apiKey}`,
-    },
-    body: formData,
-  });
+    console.log('✅ 基础IP形象图已准备完成');
 
-  if (!response.ok) {
-    const errorBody = await response.text();
-    console.error(`Sparrow API error: ${response.statusText}`, errorBody);
-    throw new Error(`Failed to generate image for prompt: ${prompt}`);
-  }
-  
-  const data = await response.json();
-  if (!data.data || !Array.isArray(data.data) || data.data.length === 0) {
-    throw new Error('API返回的数据格式无效');
-  }
-  
-  // 提取生成的图片URL，与首页IP形象生成方式一致
-  const resultData = data.data[0];
-  if (resultData.b64_json) {
-    return `data:image/png;base64,${resultData.b64_json}`;
-  } else if (resultData.url) {
-    return resultData.url;
-  } else {
-    throw new Error('无法从API响应中提取图片URL');
+    // 构建gpt-4o-image的chat格式请求
+    const requestBody = {
+      model: AI_API_CONFIG.model, // gpt-4o-image
+      messages: [
+        {
+          role: "user",
+          content: [
+            {
+              type: "text",
+              text: `基于提供的参考图片，${prompt}。要求JSON格式响应：\`\`\`json\n{"prompt": "${prompt}", "ratio": "1:1"}\n\`\`\``
+            },
+            {
+              type: "image_url", 
+              image_url: {
+                url: imageBase64
+              }
+            }
+          ]
+        }
+      ],
+      stream: false
+    };
+
+    console.log('发送gpt-4o-image请求，提示词:', prompt);
+    const response = await fetch(`${AI_API_CONFIG.baseUrl}${AI_API_CONFIG.endpoint}`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${AI_API_CONFIG.apiKey}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(requestBody)
+    });
+
+    if (!response.ok) {
+      const errorBody = await response.text();
+      console.error(`gpt-4o-image API error: ${response.statusText}`, errorBody);
+      throw new Error(`Failed to generate image for prompt: ${prompt}`);
+    }
+    
+    const data = await response.json();
+    console.log('gpt-4o-image API 响应:', data);
+    
+    // 解析gpt-4o-image的响应格式
+    if (!data.choices || !Array.isArray(data.choices) || data.choices.length === 0) {
+      throw new Error('API返回的数据格式无效 - 缺少choices字段');
+    }
+    
+    const content = data.choices[0]?.message?.content;
+    if (!content) {
+      throw new Error('API返回的数据格式无效 - 缺少content字段');
+    }
+    
+    // 从响应内容中提取图片URL (gpt-4o-image返回Markdown格式，包含图片URL)
+    const imageUrlMatch = content.match(/!\[.*?\]\((https?:\/\/[^\s)]+)\)/);
+    if (imageUrlMatch && imageUrlMatch[1]) {
+      console.log('✅ 成功提取生成的图片URL:', imageUrlMatch[1]);
+      return imageUrlMatch[1];
+    } else {
+      console.log('响应内容:', content);
+      throw new Error('无法从API响应中提取图片URL');
+    }
+    
+  } catch (error) {
+    console.error('❌ triggerSparrowGeneration 执行失败:', error);
+    throw new Error(`图片生成失败: ${error instanceof Error ? error.message : '未知错误'}`);
   }
 }
 
@@ -945,10 +1059,10 @@ const updateCharacterOnTaskCompletion = async (task: GenerationTask) => {
     }
 };
 
-// Simple test function to debug the API response format
+// Simple test function to debug the gpt-4o-image API response format
 export const testAPIResponse = async () => {
   try {
-    // Create a minimal test request with a small image
+    // Create a minimal test request with a small image (red square)
     const canvas = document.createElement('canvas');
     canvas.width = 100;
     canvas.height = 100;
@@ -960,22 +1074,42 @@ export const testAPIResponse = async () => {
       canvas.toBlob((blob) => resolve(blob!), 'image/png');
     });
     
-    const formData = new FormData();
-    formData.append('prompt', 'test prompt');
-    formData.append('image', blob, 'test.png');
-    formData.append('model', AI_API_CONFIG.model);
-    formData.append('response_format', 'url');
-    formData.append('size', '1024x1024');
-    formData.append('n', '1');
+    // Convert to base64
+    const buffer = await blob.arrayBuffer();
+    const base64 = btoa(String.fromCharCode(...new Uint8Array(buffer)));
+    const imageBase64 = `data:image/png;base64,${base64}`;
     
-    console.log('Testing API with minimal request...');
+    const requestBody = {
+      model: AI_API_CONFIG.model, // gpt-4o-image
+      messages: [
+        {
+          role: "user",
+          content: [
+            {
+              type: "text",
+              text: "基于提供的参考图片，生成一个测试图片。要求JSON格式响应：```json\n{\"prompt\": \"test prompt\", \"ratio\": \"1:1\"}\n```"
+            },
+            {
+              type: "image_url", 
+              image_url: {
+                url: imageBase64
+              }
+            }
+          ]
+        }
+      ],
+      stream: false
+    };
     
-    const response = await fetch(`${AI_API_CONFIG.baseUrl}/images/edits`, {
+    console.log('Testing gpt-4o-image API...');
+    
+    const response = await fetch(`${AI_API_CONFIG.baseUrl}${AI_API_CONFIG.endpoint}`, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${AI_API_CONFIG.apiKey}`
+        'Authorization': `Bearer ${AI_API_CONFIG.apiKey}`,
+        'Content-Type': 'application/json'
       },
-      body: formData
+      body: JSON.stringify(requestBody)
     });
     
     console.log('Test API Response Status:', response.status);
@@ -1024,13 +1158,9 @@ export const testAPIConnectivity = async () => {
     });
   }
 
-  // Test 2: Image editing endpoint
+  // Test 2: Chat completions endpoint for gpt-4o-image
   try {
-    // Create a minimal test request
-    const testFormData = new FormData();
-    testFormData.append('prompt', 'test');
-    
-    const response = await fetch(`${AI_API_CONFIG.baseUrl}/images/edits`, {
+    const response = await fetch(`${AI_API_CONFIG.baseUrl}${AI_API_CONFIG.endpoint}`, {
       method: 'OPTIONS', // Use OPTIONS to test CORS/endpoint availability
       headers: {
         'Authorization': `Bearer ${AI_API_CONFIG.apiKey}`
@@ -1038,14 +1168,14 @@ export const testAPIConnectivity = async () => {
     });
     
     tests.push({
-      test: 'images_edits_endpoint',
+      test: 'chat_completions_endpoint',
       accessible: response.ok || response.status === 405, // 405 means method not allowed but endpoint exists
       status: response.status,
       statusText: response.statusText
     });
   } catch (error) {
     tests.push({
-      test: 'images_edits_endpoint', 
+      test: 'chat_completions_endpoint', 
       accessible: false,
       error: error instanceof Error ? error.message : '连接失败'
     });

@@ -29,8 +29,8 @@ export default function UseCases() {
       {
         id: 'personal-1',
         title: '打造专属IP形象和周边',
-        beforeImage: 'https://ext.same-assets.com/1651265233/2928208650.jpeg',
-        afterImage: 'https://ext.same-assets.com/1651265233/106988532.jpeg',
+        beforeImage: '/use-cases/personal-before.jpeg',
+        afterImage: '/use-cases/personal-after.jpeg',
         description: '个人用户上传自己的照片，AI生成可爱的卡通形象，制作成手机壳、钥匙扣、头像等个人专属周边产品。\n\n非常适合送给朋友、家人作为独特的生日礼物，或者为自己打造专属的个人品牌形象。'
       }
     ],
@@ -38,8 +38,8 @@ export default function UseCases() {
       {
         id: 'designer-1',
         title: '快速原型制作和客户展示',
-        beforeImage: 'https://ext.same-assets.com/1651265233/1447566140.jpeg',
-        afterImage: 'https://ext.same-assets.com/1651265233/3287272718.jpeg',
+        beforeImage: '/use-cases/designer-before.jpeg',
+        afterImage: '/use-cases/designer-after.jpeg',
         description: '设计师可以快速将概念草图转化为完整的IP形象和周边产品展示，大大提高工作效率。\n\n帮助设计师向客户展示完整的产品线概念，获得更多商业机会。'
       }
     ],
@@ -47,8 +47,8 @@ export default function UseCases() {
       {
         id: 'ecommerce-1',
         title: '创建品牌吉祥物和周边',
-        beforeImage: 'https://ext.same-assets.com/1651265233/1309645506.jpeg',
-        afterImage: 'https://ext.same-assets.com/1651265233/3429307030.jpeg',
+        beforeImage: '/use-cases/ecommerce-before.jpeg',
+        afterImage: '/use-cases/ecommerce-after.jpeg',
         description: '电商品牌通过上传产品图片或品牌元素，创建独特的品牌吉祥物IP形象。\n\n生成完整的品牌周边产品线，增强品牌认知度和用户粘性，提升营销效果。'
       }
     ],
@@ -56,8 +56,8 @@ export default function UseCases() {
       {
         id: 'cultural-1',
         title: '传统文化现代化表达',
-        beforeImage: 'https://ext.same-assets.com/1651265233/370607586.jpeg',
-        afterImage: 'https://ext.same-assets.com/1651265233/3237102190.jpeg',
+        beforeImage: '/use-cases/cultural-before.jpeg',
+        afterImage: '/use-cases/cultural-after.jpeg',
         description: '将传统文化元素、历史人物等转化为现代可爱的IP形象，制作成各种文创产品。\n\n让传统文化以更贴近年轻人的方式传播，创造新的文化价值和商业价值。'
       }
     ],
@@ -65,8 +65,8 @@ export default function UseCases() {
       {
         id: 'pet-1',
         title: '宠物IP化和周边定制',
-        beforeImage: 'https://ext.same-assets.com/1651265233/3671485085.jpeg',
-        afterImage: 'https://ext.same-assets.com/1651265233/3280904716.jpeg',
+        beforeImage: '/use-cases/pet-before.jpeg',
+        afterImage: '/use-cases/pet-after.jpeg',
         description: '宠物主人上传爱宠照片，生成可爱的宠物卡通形象，制作成各种周边产品。\n\n非常适合制作成纪念品、礼物，或者发展成宠物网红IP。'
       }
     ],
@@ -74,8 +74,8 @@ export default function UseCases() {
       {
         id: 'api-1',
         title: '集成IP生成功能',
-        beforeImage: 'https://ext.same-assets.com/1651265233/915845048.jpeg',
-        afterImage: 'https://ext.same-assets.com/1651265233/915845048.jpeg',
+        beforeImage: '/use-cases/api-before.jpeg',
+        afterImage: '/use-cases/api-after.jpeg',
         description: '开发者可以通过API接口将IP生成和周边制作功能集成到自己的应用中。\n\n为用户提供个性化的IP创作服务，创造新的商业模式。'
       }
     ]

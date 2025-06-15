@@ -1,8 +1,12 @@
 import { createClient } from '@supabase/supabase-js';
 import { v4 as uuidv4 } from 'uuid';
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+// Supabase配置 - 使用真实数据库
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://wrfvysakckcmvquvwuei.supabase.co';
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndyZnZ5c2FrY2tjbXZxdXZ3dWVpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDk0MDEzMDEsImV4cCI6MjA2NDk3NzMwMX0.LgQHwS9rbcmTfL2SegtcDByDTxWqraKMcXRQBPMtYJw';
+
+// 不再使用演示模式
+const isDemoMode = false;
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
@@ -327,7 +331,45 @@ export const saveUserIPCharacter = async (
   mainImageUrl: string
 ): Promise<UserIPCharacter> => {
   try {
-    console.log('开始保存IP形象:', { userId, name, mainImageUrl });
+    console.log('开始保存IP形象:', { userId, name, mainImageUrl, isDemoMode });
+    
+    // 演示模式处理
+    if (isDemoMode) {
+      console.log('🎨 演示模式：模拟保存IP形象');
+      const demoCharacter: UserIPCharacter = {
+        id: uuidv4(),
+        user_id: userId,
+        name,
+        main_image_url: mainImageUrl,
+        created_at: new Date().toISOString(),
+      };
+      
+      // 模拟延迟
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      console.log('演示模式：IP形象保存成功', demoCharacter);
+      return demoCharacter;
+    }
+    
+    // 检查当前用户是否已认证
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    
+    if (authError) {
+      console.error('获取当前认证用户失败:', authError);
+      throw new Error('认证状态异常，请重新登录');
+    }
+    
+    if (!user) {
+      console.error('用户未认证');
+      throw new Error('用户未登录，请先登录');
+    }
+    
+    if (user.id !== userId) {
+      console.error('用户ID不匹配:', { sessionUserId: user.id, requestUserId: userId });
+      throw new Error('用户身份验证失败，请重新登录');
+    }
+    
+    console.log('用户认证验证通过:', { userId: user.id, email: user.email });
     
     const character: Partial<UserIPCharacter> = {
       user_id: userId,
@@ -347,7 +389,43 @@ export const saveUserIPCharacter = async (
 
     if (error) {
       console.error('Supabase错误详情:', error);
-      throw new Error(`保存IP形象失败: ${error.message} (code: ${error.code})`);
+      
+      // 检查错误对象是否为空或无效
+      if (!error || (typeof error === 'object' && Object.keys(error).length === 0)) {
+        console.error('收到空的Supabase错误对象，可能是连接问题');
+        throw new Error('数据库连接失败，请检查网络连接后重试');
+      }
+      
+      // 获取错误信息
+      const errorMessage = error.message || error.details || error.hint || '';
+      const errorCode = error.code || 'unknown';
+      
+      // 网络错误处理
+      if (errorMessage.includes('Failed to fetch') || errorMessage.includes('NetworkError') || errorMessage.includes('fetch')) {
+        throw new Error('网络连接失败，请检查网络后重试');
+      }
+      
+      // 认证错误处理
+      if (errorMessage.includes('JWT') || errorMessage.includes('unauthorized') || errorCode === '42501') {
+        throw new Error('认证失败，请重新登录');
+      }
+      
+      // 数据库连接错误
+      if (errorCode === 'PGRST301' || errorMessage.includes('connection') || errorMessage.includes('timeout')) {
+        throw new Error('数据库连接失败，请稍后重试');
+      }
+      
+      // RLS权限错误
+      if (errorCode === '42501' || errorMessage.includes('permission denied') || errorMessage.includes('policy')) {
+        throw new Error('权限不足，请确认您已登录');
+      }
+      
+      // 通用错误处理
+      if (errorMessage) {
+        throw new Error(`保存IP形象失败: ${errorMessage} (code: ${errorCode})`);
+      } else {
+        throw new Error(`保存IP形象失败: 未知错误 (code: ${errorCode})`);
+      }
     }
 
     if (!data) {
@@ -358,6 +436,12 @@ export const saveUserIPCharacter = async (
     return data;
   } catch (err) {
     console.error('saveUserIPCharacter 捕获错误:', err);
+    
+    // 网络错误的特殊处理
+    if (err instanceof TypeError && err.message.includes('Failed to fetch')) {
+      throw new Error('网络连接失败，请检查网络连接后重试');
+    }
+    
     if (err instanceof Error) {
       throw err;
     }
@@ -426,7 +510,13 @@ export const getIPCharacterWithStatus = async (ipId: string) => {
 
 export const getUserIPCharacters = async (userId: string): Promise<UserIPCharacter[]> => {
   try {
-    console.log(`正在为用户 ${userId} 获取IP形象列表`);
+    console.log(`正在为用户 ${userId} 获取IP形象列表`, { isDemoMode });
+    
+    // 演示模式处理
+    if (isDemoMode) {
+      console.log('🎨 演示模式：返回空的IP形象列表');
+      return [];
+    }
     
     const { data, error } = await supabase
       .from('user_ip_characters')
@@ -436,12 +526,24 @@ export const getUserIPCharacters = async (userId: string): Promise<UserIPCharact
 
     if (error) {
       console.error('获取用户IP形象列表失败:', error);
+      
+      // 网络错误处理
+      if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError')) {
+        throw new Error('网络连接失败，请检查网络后重试');
+      }
+      
       throw new Error(`获取IP形象列表失败: ${error.message}`);
     }
 
-    return data;
+    return data || [];
   } catch (err) {
     console.error('getUserIPCharacters 捕获错误:', err);
+    
+    // 网络错误的特殊处理
+    if (err instanceof TypeError && err.message.includes('Failed to fetch')) {
+      throw new Error('网络连接失败，请检查网络连接后重试');
+    }
+    
     if (err instanceof Error) {
       throw err;
     }

@@ -144,32 +144,68 @@ export default function HeroSection() {
 
   // Handle save IP character
   const handleSaveIPCharacter = async () => {
+    // 1. 检查是否有生成的IP形象
     if (!generatedResult) {
       setError('请先生成IP形象');
       return;
     }
 
+    // 2. 如果用户状态正在加载，等待加载完成
     if (isLoading) {
-      return; // Wait for user loading to complete
+      console.log('用户状态加载中，稍后重试...');
+      return;
     }
 
+    // 3. 检查用户登录状态
     if (!currentUser) {
+      console.log('用户未登录，显示登录窗口');
       setShowAuthModal(true);
       return;
     }
+
+    // 4. 验证用户数据的完整性
+    if (!currentUser.id || !currentUser.username) {
+      console.error('用户数据不完整:', currentUser);
+      setError('用户信息异常，请重新登录');
+      setShowAuthModal(true);
+      return;
+    }
+
+    console.log('用户已登录，开始保存IP形象...', { 
+      userId: currentUser.id, 
+      username: currentUser.username 
+    });
 
     setIsSaving(true);
     setError(null);
 
     try {
       // Save IP character to user's collection
-      const savedIP = await saveUserIPCharacter(currentUser.id, `IP形象_${Date.now()}`, generatedResult.url);
+      const savedIP = await saveUserIPCharacter(
+        currentUser.id, 
+        `IP形象_${Date.now()}`, 
+        generatedResult.url
+      );
       
+      console.log('IP形象保存成功，跳转到详情页:', savedIP.id);
       // 直接跳转到刚保存的IP详情页
       router.push(`/workshop?ipId=${savedIP.id}`);
     } catch (error) {
       console.error('保存IP形象失败:', error);
-      setError(`保存失败: ${error instanceof Error ? error.message : '未知错误'}`);
+      
+      // 针对不同错误类型给出相应提示
+      if (error instanceof Error) {
+        if (error.message.includes('认证失败') || error.message.includes('JWT') || error.message.includes('unauthorized')) {
+          setError('登录状态已过期，请重新登录');
+          setShowAuthModal(true);
+        } else if (error.message.includes('网络连接失败') || error.message.includes('Failed to fetch')) {
+          setError('网络连接失败，请检查网络后重试');
+        } else {
+          setError(`保存失败: ${error.message}`);
+        }
+      } else {
+        setError('保存失败: 未知错误');
+      }
     } finally {
       setIsSaving(false);
     }
@@ -238,8 +274,11 @@ export default function HeroSection() {
         setGeneratedResult(result.data);
         console.log('生成成功:', result.data);
         
-        // 自动保存逻辑：检查用户是否已登录，如果已登录则自动保存
-        if (currentUser && !isLoading) {
+        // 自动保存逻辑：暂时禁用，等待Supabase配置完成
+        // TODO: 配置好Supabase环境变量后重新启用
+        console.log('自动保存已暂时禁用（等待数据库配置）');
+        /*
+        if (currentUser && !isLoading && result.data) {
           console.log('用户已登录，开始自动保存IP形象...');
           try {
             await saveUserIPCharacter(currentUser.id, `IP形象_${Date.now()}`, result.data.url);
@@ -252,6 +291,7 @@ export default function HeroSection() {
         } else {
           console.log('用户未登录，跳过自动保存');
         }
+        */
       } else {
         // 简化错误处理，直接显示API返回的错误信息
         const errorMessage = result.error || '生成失败，请稍后重试';
@@ -275,15 +315,15 @@ export default function HeroSection() {
 
   const exampleImages = [
     {
-      src: 'https://ext.same-assets.com/1651265233/1201440311.jpeg',
+      src: '/examples/cartoon-character.jpeg',
       alt: '卡通角色示例'
     },
     {
-      src: 'https://ext.same-assets.com/1651265233/406424930.jpeg',
+      src: '/examples/pet-ip.jpeg',
       alt: '宠物IP示例'
     },
     {
-      src: 'https://ext.same-assets.com/1651265233/3769327180.jpeg',
+      src: '/examples/character-portrait.jpeg',
       alt: '人物形象示例'
     }
   ];
@@ -476,12 +516,7 @@ export default function HeroSection() {
         {/* Right Content - Product Showcase */}
         <div className="flex justify-center lg:justify-end mt-8 lg:mt-0">
           <div className="relative max-w-md w-full">
-            {/* Debug info */}
-            {process.env.NODE_ENV === 'development' && (
-              <div className="absolute top-0 left-0 bg-red-500 text-white text-xs p-1 z-50">
-                右侧内容: {generatedResult ? 'IP形象' : isGenerating ? '生成中' : '默认状态'}
-              </div>
-            )}
+
             
             {/* Main Product Image */}
             {generatedResult ? (
@@ -553,7 +588,7 @@ export default function HeroSection() {
               /* Default State - 确保始终显示 */
               <div className="relative">
                 <img
-                  src="/task-home-image-replace/before-after.png"
+                  src="/task-home-image-replace/@Chat.png"
                   alt="IP周边产品展示"
                   className="w-full h-auto rounded-2xl shadow-2xl"
                   onError={(e) => {
@@ -612,10 +647,21 @@ export default function HeroSection() {
         isOpen={showAuthModal}
         onClose={() => setShowAuthModal(false)}
         onSuccess={(user) => {
+          console.log('登录成功，更新用户状态:', { userId: user.id, username: user.username });
           setCurrentUser(user);
-          setShowAuthModal(false);
-          // 自动保存IP形象
-          saveIPAfterAuth(user);
+          
+          // 显示成功提示
+          setError(null);
+          
+          // 延迟关闭Modal，让用户看到成功状态
+          setTimeout(() => {
+            setShowAuthModal(false);
+            // 自动保存IP形象
+            if (generatedResult) {
+              console.log('开始自动保存IP形象...');
+              saveIPAfterAuth(user);
+            }
+          }, 300);
         }}
       />
 

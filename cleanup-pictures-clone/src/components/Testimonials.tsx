@@ -14,7 +14,7 @@ export default function Testimonials() {
             {/* Profile Image */}
             <div className="flex-shrink-0">
               <img
-                src="https://ext.same-assets.com/1651265233/1641842340.jpeg"
+                src="/testimonials/user-avatar.jpeg"
                 alt="李小美"
                 className="w-24 h-24 lg:w-32 lg:h-32 rounded-full object-cover border-4 border-gray-100 shadow-lg"
               />

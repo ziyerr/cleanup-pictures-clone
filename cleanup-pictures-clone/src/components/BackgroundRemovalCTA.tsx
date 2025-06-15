@@ -15,7 +15,7 @@ export default function IPShowcaseCTA() {
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 max-w-4xl mx-auto mb-8">
           <div className="relative group">
             <img
-              src="https://ext.same-assets.com/1651265233/1906157659.jpeg"
+              src="/cta/background-removal.jpeg"
               alt="IP作品展示 - 可爱猫咪周边"
               className="w-full aspect-square object-cover rounded-xl shadow-lg group-hover:scale-105 transition-transform"
             />

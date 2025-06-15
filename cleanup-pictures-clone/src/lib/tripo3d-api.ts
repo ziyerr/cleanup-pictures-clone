@@ -1,7 +1,7 @@
 // Tripo3D API integration for 3D model generation
 
 const TRIPO3D_CONFIG = {
-  apiKey: 'tsk_BSWrPgLgNGn1dUVsw7yJflHwmCHHY6ISUhRbYHNvIxq',
+  apiKey: 'tcli_e5aefcdde2314dacaf90390b4c38d2b4', // 根据README.md更新API Key
   baseUrl: 'https://api.tripo3d.ai/v2'
 };
 

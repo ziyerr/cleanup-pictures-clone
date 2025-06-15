@@ -2,6 +2,8 @@
 
 import { createContext, useContext, useState, useEffect, type ReactNode } from 'react';
 import type { AuthUser } from '../lib/supabase';
+import { supabase, getCurrentUser } from '../lib/supabase';
+import type { Session } from '@supabase/supabase-js';
 
 interface UserContextType {
   currentUser: AuthUser | null;
@@ -9,82 +11,107 @@ interface UserContextType {
   logout: () => void;
   isLoading: boolean;
   isMounted: boolean;
+  session: Session | null;
 }
 
 const UserContext = createContext<UserContextType | undefined>(undefined);
 
 export function UserProvider({ children }: { children: ReactNode }) {
   const [currentUser, setCurrentUser] = useState<AuthUser | null>(null);
+  const [session, setSession] = useState<Session | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isMounted, setIsMounted] = useState(false);
 
-  // Load user from localStorage on mount (client-side only)
+  // Load user from Supabase session on mount
   useEffect(() => {
-    const loadUser = () => {
+    const initializeAuth = async () => {
       setIsMounted(true);
+      setIsLoading(true);
       
-      // Ensure we're on the client side
-      if (typeof window === 'undefined') {
-        setIsLoading(false);
-        return;
-      }
-
       try {
-        const savedUser = localStorage.getItem('popverse_user');
-        if (savedUser) {
-          const user = JSON.parse(savedUser);
-          // Validate the user object
-          if (user && user.id && user.username) {
-            setCurrentUser(user);
-          } else {
-            // Invalid user data, remove it
-            localStorage.removeItem('popverse_user');
-          }
+        // 获取当前session
+        const { data: { session }, error } = await supabase.auth.getSession();
+        
+        if (error) {
+          console.error('获取session失败:', error);
+          setSession(null);
+          setCurrentUser(null);
+          return;
+        }
+        
+        setSession(session);
+        
+        if (session?.user) {
+          // 从session构建AuthUser对象
+          const authUser: AuthUser = {
+            id: session.user.id,
+            email: session.user.email,
+            username: session.user.user_metadata?.username || session.user.email?.split('@')[0],
+            user_metadata: session.user.user_metadata,
+            created_at: session.user.created_at || new Date().toISOString(),
+          };
+          
+          setCurrentUser(authUser);
+          console.log('从session恢复用户:', { userId: authUser.id, username: authUser.username });
+        } else {
+          setCurrentUser(null);
+          console.log('无有效session，用户未登录');
         }
       } catch (error) {
-        console.error('Failed to load user from localStorage:', error);
-        // Clear invalid data
-        try {
-          localStorage.removeItem('popverse_user');
-        } catch (removeError) {
-          console.error('Failed to remove invalid user data:', removeError);
-        }
+        console.error('初始化认证失败:', error);
+        setSession(null);
+        setCurrentUser(null);
       } finally {
         setIsLoading(false);
       }
     };
 
-    // Delay loading slightly to avoid hydration issues
-    const timer = setTimeout(loadUser, 0);
-    return () => clearTimeout(timer);
+    initializeAuth();
+
+    // 监听认证状态变化
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      console.log('认证状态变化:', event, session?.user?.id || 'no user');
+      
+      setSession(session);
+      
+      if (session?.user) {
+        const authUser: AuthUser = {
+          id: session.user.id,
+          email: session.user.email,
+          username: session.user.user_metadata?.username || session.user.email?.split('@')[0],
+          user_metadata: session.user.user_metadata,
+          created_at: session.user.created_at || new Date().toISOString(),
+        };
+        setCurrentUser(authUser);
+      } else {
+        setCurrentUser(null);
+      }
+    });
+
+    // 清理订阅
+    return () => {
+      subscription.unsubscribe();
+    };
   }, []);
 
-  // Custom setCurrentUser that also updates localStorage
+  // 更新用户状态（保持Supabase session）
   const updateCurrentUser = (user: AuthUser | null) => {
     setCurrentUser(user);
-    
-    // Only access localStorage on client side
-    if (typeof window !== 'undefined') {
-      if (user) {
-        // Save user to localStorage
-        try {
-          localStorage.setItem('popverse_user', JSON.stringify(user));
-        } catch (error) {
-          console.error('Failed to save user to localStorage:', error);
-        }
-      } else {
-        // Remove user from localStorage
-        try {
-          localStorage.removeItem('popverse_user');
-        } catch (error) {
-          console.error('Failed to remove user from localStorage:', error);
-        }
-      }
-    }
+    // 注意：不要手动清除session，让Supabase管理
   };
 
-  const logout = () => {
-    updateCurrentUser(null);
+  const logout = async () => {
+    try {
+      const { error } = await supabase.auth.signOut();
+      if (error) {
+        console.error('登出错误:', error);
+      } else {
+        console.log('用户已登出');
+      }
+    } catch (error) {
+      console.error('登出过程出错:', error);
+    }
+    // session和currentUser会通过onAuthStateChange自动清除
   };
 
   return (
@@ -93,7 +120,8 @@ export function UserProvider({ children }: { children: ReactNode }) {
       setCurrentUser: updateCurrentUser,
       logout,
       isLoading,
-      isMounted
+      isMounted,
+      session
     }}>
       {children}
     </UserContext.Provider>

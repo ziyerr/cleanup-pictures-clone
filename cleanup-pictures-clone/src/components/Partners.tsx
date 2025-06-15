@@ -2,27 +2,27 @@ export default function Partners() {
   const partners = [
     {
       name: '腾讯',
-      logo: 'https://ext.same-assets.com/1651265233/2094254514.png',
+      logo: '/partners/partner-1.png',
       alt: '腾讯'
     },
     {
       name: '字节跳动',
-      logo: 'https://ext.same-assets.com/1651265233/813913274.svg',
+      logo: '/partners/partner-2.svg',
       alt: '字节跳动'
     },
     {
       name: '小红书',
-      logo: 'https://ext.same-assets.com/1651265233/2853472961.svg',
+      logo: '/partners/partner-3.svg',
       alt: '小红书'
     },
     {
       name: 'B站',
-      logo: 'https://ext.same-assets.com/1651265233/88150141.png',
+      logo: '/partners/partner-4.png',
       alt: 'B站'
     },
     {
       name: '泡泡玛特',
-      logo: 'https://ext.same-assets.com/1651265233/862852459.png',
+      logo: '/partners/partner-5.png',
       alt: '泡泡玛特'
     }
   ];

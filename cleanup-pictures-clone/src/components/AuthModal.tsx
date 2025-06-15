@@ -27,20 +27,46 @@ export default function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps
       let user: AuthUser;
       
       if (mode === 'register') {
+        console.log('正在注册用户...', { username, email: email || '未提供' });
         user = await registerUser(username, password, email || undefined);
+        console.log('注册成功:', { userId: user.id, username: user.username });
       } else {
+        console.log('正在登录...', { username });
         user = await loginUser(username, password);
+        console.log('登录成功:', { userId: user.id, username: user.username });
       }
 
+      // 调用成功回调
       onSuccess(user);
-      onClose();
+      
+      // 延迟关闭对话框，让用户看到成功状态
+      setTimeout(() => {
+        onClose();
+      }, 500);
       
       // Reset form
       setUsername('');
       setPassword('');
       setEmail('');
     } catch (err) {
-      setError(err instanceof Error ? err.message : '操作失败');
+      console.error('认证错误:', err);
+      
+      // 根据错误类型提供更友好的错误信息
+      if (err instanceof Error) {
+        if (err.message.includes('用户不存在')) {
+          setError('用户名不存在，请检查输入或注册新账号');
+        } else if (err.message.includes('密码错误')) {
+          setError('密码不正确，请重新输入');
+        } else if (err.message.includes('用户名已存在')) {
+          setError('用户名已存在，请选择其他用户名或直接登录');
+        } else if (err.message.includes('网络')) {
+          setError('网络连接失败，请检查网络后重试');
+        } else {
+          setError(err.message);
+        }
+      } else {
+        setError(mode === 'register' ? '注册失败，请重试' : '登录失败，请重试');
+      }
     } finally {
       setLoading(false);
     }

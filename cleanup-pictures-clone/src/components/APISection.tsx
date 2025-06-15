@@ -34,7 +34,7 @@ export default function APISection() {
             <div className="text-center">
               <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-4">
                 <img
-                  src="https://ext.same-assets.com/1651265233/915845048.jpeg"
+                  src="/api/api-demo.jpeg"
                   alt="用户上传图片"
                   className="w-32 h-24 object-cover rounded-lg shadow-md"
                 />
@@ -89,7 +89,7 @@ export default function APISection() {
               <ArrowDown className="w-6 h-6 mx-auto text-gray-400 mb-4 lg:hidden" />
               <div className="grid grid-cols-2 gap-2 max-w-32 mx-auto">
                 <img
-                  src="https://ext.same-assets.com/1651265233/915845048.jpeg"
+                  src="/api/api-demo.jpeg"
                   alt="生成的IP形象"
                   className="w-full h-16 object-cover rounded-lg shadow-md"
                 />
