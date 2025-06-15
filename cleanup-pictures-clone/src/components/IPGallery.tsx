@@ -100,7 +100,7 @@ export default function IPGallery({ userIPs, loading, onIPSelect, onRefresh }: I
           {/* Sort Filter */}
           <select
             value={sortBy}
-            onChange={(e) => setSortBy(e.target.value as any)}
+            onChange={(e) => setSortBy(e.target.value as 'newest' | 'oldest' | 'name')}
             className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cleanup-green focus:border-cleanup-green"
           >
             <option value="newest">最新创建</option>

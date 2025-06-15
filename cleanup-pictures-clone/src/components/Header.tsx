@@ -101,7 +101,7 @@ export default function Header() {
       clearTimeout(timeoutId);
       window.removeEventListener('scroll', handleScroll);
     };
-  }, []);
+  }, [navItems]);
 
   // Close user menu when clicking outside
   useEffect(() => {
