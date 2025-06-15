@@ -620,19 +620,19 @@ async function triggerSparrowGeneration(prompt: string, imageUrl?: string) {
 
 // 生成多视图 - 增强版本，支持批量ID和字符关联
 export const generateMultiViews = async (
-  originalImageUrl: string, 
-  prompt: string, 
+  originalImageUrl: string,
+  prompt: string,
   userId?: string,
   batchId?: string,
   characterId?: string
-): Promise<{ [key: string]: string }> => {
+): Promise<{ leftViewTaskId?: string; backViewTaskId?: string }> => {
   const views = [
     {
-      type: 'left_view',
+      type: 'left',
       prompt: `生成参考图片中IP角色的左侧视图。要求：1. 保持与正面图完全一致的角色特征、服装和配色；2. 展示角色的左侧轮廓，包括侧面的发型、服装细节；3. 保持相同的艺术风格和比例；4. 背景保持简洁或透明；5. 角色姿态自然，适合3D建模使用。原始角色描述：${prompt}`
     },
     {
-      type: 'back_view', 
+      type: 'back',
       prompt: `生成参考图片中IP角色的背面视图。要求：1. 保持与正面图完全一致的角色特征、服装和配色；2. 展示角色的背部轮廓，包括后脑勺、服装背面设计；3. 保持相同的艺术风格和比例；4. 背景保持简洁或透明；5. 角色姿态自然，与正面图协调一致。原始角色描述：${prompt}`
     }
   ];
@@ -653,9 +653,13 @@ export const generateMultiViews = async (
 
   return createdTasks.reduce((acc, task) => {
     const view = task.task_type.replace('multi_view_', '');
-    acc[view + '_task_id'] = task.id;
+    if (view === 'left') {
+      acc.leftViewTaskId = task.id;
+    } else if (view === 'back') {
+      acc.backViewTaskId = task.id;
+    }
     return acc;
-  }, {} as { [key: string]: string });
+  }, {} as { leftViewTaskId?: string; backViewTaskId?: string });
 };
 
 // 处理图像生成任务 - 通用函数
@@ -778,8 +782,8 @@ export const process3DModelTask = async (taskId: string) => {
     
     // 3D模型生成必须在左视图和后视图全部生成完毕后才能开始
     const allTasks = parent_character_id ? await getCharacterTasks(parent_character_id) : [];
-    const leftViewTask = allTasks.find(t => t.task_type === 'multi_view_left_view' && t.status === 'completed');
-    const backViewTask = allTasks.find(t => t.task_type === 'multi_view_back_view' && t.status === 'completed');
+    const leftViewTask = allTasks.find(t => t.task_type === 'multi_view_left' && t.status === 'completed');
+    const backViewTask = allTasks.find(t => t.task_type === 'multi_view_back' && t.status === 'completed');
 
     // 检查是否所有必需的视图都已完成
     if (!original_image_url) {
