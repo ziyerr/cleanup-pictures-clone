@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { Loader2, CheckCircle, AlertCircle, Download, Eye, RotateCcw } from 'lucide-react';
-import { checkTaskStatus, generateMultiViews, generateMerchandise, generate3DModel, TaskStatusResponse } from '../lib/ai-api';
+import { checkTaskStatus, generateMultiViews, generateMerchandise, generate3DModel, type TaskStatusResponse } from '../lib/ai-api';
 
 interface MerchandiseShowcaseProps {
   originalImageUrl: string;

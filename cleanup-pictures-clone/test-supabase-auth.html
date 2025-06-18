@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Supabase认证测试</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        .container { max-width: 500px; margin: 0 auto; }
+        .form-group { margin: 15px 0; }
+        label { display: block; margin-bottom: 5px; }
+        input { width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; }
+        button { padding: 10px 15px; margin: 5px; border: none; border-radius: 4px; cursor: pointer; }
+        .primary { background: #007bff; color: white; }
+        .secondary { background: #6c757d; color: white; }
+        .success { background: #28a745; color: white; }
+        .error { background: #dc3545; color: white; }
+        .result { margin: 15px 0; padding: 10px; border-radius: 4px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Supabase认证系统测试</h1>
+        
+        <div class="form-group">
+            <label>用户名:</label>
+            <input type="text" id="username" placeholder="输入用户名" value="testuser123">
+        </div>
+        
+        <div class="form-group">
+            <label>密码:</label>
+            <input type="password" id="password" placeholder="输入密码" value="password123">
+        </div>
+        
+        <div class="form-group">
+            <label>邮箱 (注册时可选):</label>
+            <input type="email" id="email" placeholder="输入邮箱">
+        </div>
+        
+        <div>
+            <button class="primary" onclick="testRegister()">测试注册</button>
+            <button class="secondary" onclick="testLogin()">测试登录</button>
+            <button class="success" onclick="testGetUser()">获取当前用户</button>
+            <button class="error" onclick="testLogout()">登出</button>
+            <button onclick="clearResults()">清空结果</button>
+        </div>
+        
+        <div id="results"></div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script>
+        // Supabase 配置
+        const supabaseUrl = 'https://wrfvysakckcmvquvwuei.supabase.co';
+        const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndyZnZ5c2FrY2tjbXZxdXZ3dWVpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDk0MDEzMDEsImV4cCI6MjA2NDk3NzMwMX0.LgQHwS9rbcmTfL2SegtcDByDTxWqraKMcXRQBPMtYJw';
+        
+        const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
+        
+        function logResult(message, type = 'info') {
+            const results = document.getElementById('results');
+            const div = document.createElement('div');
+            div.className = 'result ' + type;
+            div.innerHTML = '<strong>' + new Date().toLocaleTimeString() + ':</strong> ' + message;
+            results.appendChild(div);
+            console.log(message);
+        }
+        
+        async function testRegister() {
+            try {
+                const username = document.getElementById('username').value;
+                const password = document.getElementById('password').value;
+                const email = document.getElementById('email').value || `${username}@temp.local`;
+                
+                logResult(`开始注册: ${username} (${email})`, 'info');
+                
+                const { data, error } = await supabase.auth.signUp({
+                    email: email,
+                    password: password,
+                    options: {
+                        data: {
+                            username: username,
+                        }
+                    }
+                });
+                
+                if (error) {
+                    logResult(`注册失败: ${error.message}`, 'error');
+                } else {
+                    logResult(`注册成功: ${JSON.stringify(data.user, null, 2)}`, 'success');
+                }
+            } catch (err) {
+                logResult(`注册异常: ${err.message}`, 'error');
+            }
+        }
+        
+        async function testLogin() {
+            try {
+                const username = document.getElementById('username').value;
+                const password = document.getElementById('password').value;
+                const email = document.getElementById('email').value || `${username}@temp.local`;
+                
+                logResult(`开始登录: ${email}`, 'info');
+                
+                const { data, error } = await supabase.auth.signInWithPassword({
+                    email: email,
+                    password: password,
+                });
+                
+                if (error) {
+                    logResult(`登录失败: ${error.message}`, 'error');
+                } else {
+                    logResult(`登录成功: ${JSON.stringify(data.user, null, 2)}`, 'success');
+                }
+            } catch (err) {
+                logResult(`登录异常: ${err.message}`, 'error');
+            }
+        }
+        
+        async function testGetUser() {
+            try {
+                logResult('获取当前用户...', 'info');
+                
+                const { data: { session }, error } = await supabase.auth.getSession();
+                
+                if (error) {
+                    logResult(`获取用户失败: ${error.message}`, 'error');
+                } else if (session?.user) {
+                    logResult(`当前用户: ${JSON.stringify(session.user, null, 2)}`, 'success');
+                } else {
+                    logResult('没有登录用户', 'error');
+                }
+            } catch (err) {
+                logResult(`获取用户异常: ${err.message}`, 'error');
+            }
+        }
+        
+        async function testLogout() {
+            try {
+                logResult('开始登出...', 'info');
+                
+                const { error } = await supabase.auth.signOut();
+                
+                if (error) {
+                    logResult(`登出失败: ${error.message}`, 'error');
+                } else {
+                    logResult('登出成功', 'success');
+                }
+            } catch (err) {
+                logResult(`登出异常: ${err.message}`, 'error');
+            }
+        }
+        
+        function clearResults() {
+            document.getElementById('results').innerHTML = '';
+        }
+        
+        // 页面加载时测试连接
+        window.onload = function() {
+            logResult('页面加载完成，Supabase客户端已初始化', 'success');
+            logResult(`Supabase URL: ${supabaseUrl}`, 'info');
+            logResult(`API Key前缀: ${supabaseKey.substring(0, 20)}...`, 'info');
+        };
+    </script>
+</body>
+</html>

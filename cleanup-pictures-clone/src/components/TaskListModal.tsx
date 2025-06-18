@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { Loader2, CheckCircle, AlertCircle, Download, Eye, RotateCcw, X, Clock, Zap } from 'lucide-react';
-import { type GenerationTask } from '../lib/supabase';
+import type { GenerationTask } from '../lib/supabase';
 import { useUser } from '../contexts/UserContext';
 
 interface TaskListModalProps {

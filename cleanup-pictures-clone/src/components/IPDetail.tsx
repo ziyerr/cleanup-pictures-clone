@@ -2,9 +2,10 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { Share2, Download, Edit, Trash2, Eye, ExternalLink, Play, Pencil, Check, Loader2 as Loader, AlertCircle } from 'lucide-react';
-import { UserIPCharacter } from '../lib/supabase';
+import type { UserIPCharacter } from '../lib/supabase';
 import MerchandiseGenerationModal from './MerchandiseGenerationModal';
 import TaskListModal from './TaskListModal';
+import CustomMerchandiseModal from './CustomMerchandiseModal';
 import IPImage from './IPImage';
 import { useUser } from '../contexts/UserContext';
 
@@ -22,6 +23,7 @@ type IPCharacterWithStatus = UserIPCharacter & {
 export default function IPDetail({ ipCharacter, onBack, onUpdate }: IPDetailProps) {
   const { currentUser } = useUser();
   const [showMerchandiseModal, setShowMerchandiseModal] = useState(false);
+  const [showCustomMerchandiseModal, setShowCustomMerchandiseModal] = useState(false);
   const [showTaskListModal, setShowTaskListModal] = useState(false);
   const [activeTab, setActiveTab] = useState<'overview' | 'merchandise' | '3d-model'>('merchandise');
   const [characterStatus, setCharacterStatus] = useState<IPCharacterWithStatus | null>(null);
@@ -34,15 +36,27 @@ export default function IPDetail({ ipCharacter, onBack, onUpdate }: IPDetailProp
 
   const fetchStatus = useCallback(async () => {
     try {
-      const response = await fetch(`/api/ip/${ipCharacter.id}/status`);
-      if (!response.ok) throw new Error('Failed to fetch status');
-      const data = await response.json();
+      // 直接使用客户端Supabase调用，而不是API端点
+      const { getIPCharacterWithStatus } = await import('../lib/supabase');
+      const data = await getIPCharacterWithStatus(ipCharacter.id);
+      
+      if (!data) {
+        throw new Error('IP角色不存在或无权访问');
+      }
+      
+      console.log('IPDetail - 获取到的IP状态数据:', data);
       setCharacterStatus(data);
+      
+      // 如果有新的周边商品数据，同步更新到父组件
+      if (data.merchandise_urls && Object.keys(data.merchandise_urls).length > 0) {
+        console.log('IPDetail - 发现周边商品数据，更新父组件:', data.merchandise_urls);
+        onUpdate(data);
+      }
     } catch (error) {
-      console.error(error);
+      console.error('获取IP状态失败:', error);
       setCharacterStatus(null); // Set to null on error to show error state
     }
-  }, [ipCharacter.id]);
+  }, [ipCharacter.id, onUpdate]);
 
   // Effect for initial load
   useEffect(() => {
@@ -52,16 +66,27 @@ export default function IPDetail({ ipCharacter, onBack, onUpdate }: IPDetailProp
 
   // Effect for polling
   useEffect(() => {
-    const shouldPoll = characterStatus?.initial_task_status !== 'completed' || characterStatus?.merchandise_task_status;
+    const shouldPoll = characterStatus?.initial_task_status !== 'completed' || characterStatus?.merchandise_task_status === 'processing';
+    console.log('IPDetail - 轮询检查:', {
+      shouldPoll,
+      initial_task_status: characterStatus?.initial_task_status,
+      merchandise_task_status: characterStatus?.merchandise_task_status,
+      isLoading
+    });
+    
     if (!shouldPoll || isLoading) {
       return;
     }
 
     const intervalId = setInterval(() => {
+      console.log('IPDetail - 执行定时轮询');
       fetchStatus();
     }, 5000); // Poll every 5 seconds
 
-    return () => clearInterval(intervalId);
+    return () => {
+      console.log('IPDetail - 清除轮询定时器');
+      clearInterval(intervalId);
+    };
   }, [characterStatus, fetchStatus, isLoading]);
 
   const handleShare = () => {
@@ -121,11 +146,20 @@ export default function IPDetail({ ipCharacter, onBack, onUpdate }: IPDetailProp
 
     setIsGenerating(true);
     try {
+      // Get the current session token for authentication
+      const { data: { session } } = await (await import('../lib/supabase')).supabase.auth.getSession();
+      const authToken = session?.access_token;
+
+      if (!authToken) {
+        throw new Error('认证token不存在，请重新登录');
+      }
+
       const response = await fetch(`/api/ip/${ipCharacter.id}/generate-all`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'x-user-id': currentUser?.id || '',
+          'Authorization': `Bearer ${authToken}`,
         },
       });
 
@@ -150,7 +184,60 @@ export default function IPDetail({ ipCharacter, onBack, onUpdate }: IPDetailProp
     alert('即将推出：查看公开分享页面！');
   };
 
-  const merchandiseItems = ipCharacter.merchandise_urls ? Object.entries(ipCharacter.merchandise_urls) : [];
+  const handleCustomMerchandiseGeneration = async (merchandiseData: {
+    name: string;
+    description: string;
+    referenceImageUrl?: string;
+  }) => {
+    try {
+      // Get the current session token for authentication
+      const { data: { session } } = await (await import('../lib/supabase')).supabase.auth.getSession();
+      const authToken = session?.access_token;
+
+      if (!authToken) {
+        throw new Error('认证token不存在，请重新登录');
+      }
+
+      const response = await fetch(`/api/ip/${ipCharacter.id}/generate-custom`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-user-id': currentUser?.id || '',
+          'Authorization': `Bearer ${authToken}`,
+        },
+        body: JSON.stringify(merchandiseData),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: '自定义生成启动失败' }));
+        throw new Error(errorData.error);
+      }
+
+      const result = await response.json();
+      console.log('自定义周边生成任务已启动:', result);
+
+      // 立即刷新状态以显示新任务
+      await fetchStatus();
+
+      alert(`成功启动"${merchandiseData.name}"的生成任务！`);
+
+    } catch (error) {
+      console.error('启动自定义周边生成失败:', error);
+      alert(`启动失败: ${(error as Error).message}`);
+    }
+  };
+
+  // 使用最新的角色状态数据，如果可用的话，确保数据一致性
+  const currentCharacterData = characterStatus || ipCharacter;
+  const merchandiseItems = currentCharacterData.merchandise_urls ? Object.entries(currentCharacterData.merchandise_urls) : [];
+  
+  console.log('IPDetail - 当前角色数据:', {
+    id: currentCharacterData.id,
+    name: currentCharacterData.name,
+    merchandise_urls: currentCharacterData.merchandise_urls,
+    merchandise_count: merchandiseItems.length,
+    merchandise_task_status: currentCharacterData.merchandise_task_status
+  });
 
   const renderActionButton = () => {
     if (isLoading) {
@@ -404,18 +491,27 @@ export default function IPDetail({ ipCharacter, onBack, onUpdate }: IPDetailProp
         <div>
           <div className="flex items-center justify-between mb-6">
             <h3 className="text-xl font-semibold text-gray-900">周边商品</h3>
-            <button
-              onClick={handleGenerateMoreMerchandise}
-              disabled={isGenerating || characterStatus?.merchandise_task_status === 'processing'}
-              className="flex items-center gap-2 px-4 py-2 bg-cleanup-green text-black font-medium rounded-lg hover:bg-green-400 transition-colors disabled:opacity-50"
-            >
-              {isGenerating || characterStatus?.merchandise_task_status === 'processing' ? (
-                <Loader className="w-4 h-4 animate-spin" />
-              ) : (
-                <Play className="w-4 h-4" />
+            <div className="flex items-center gap-3">
+              {/* 生成中的任务按钮 */}
+              {(isGenerating || characterStatus?.merchandise_task_status === 'processing') && (
+                <button
+                  onClick={() => window.open('/tasks', '_blank')}
+                  className="flex items-center gap-2 px-4 py-2 bg-blue-100 text-blue-700 font-medium rounded-lg hover:bg-blue-200 transition-colors"
+                >
+                  <Loader className="w-4 h-4 animate-spin" />
+                  生成中的任务
+                </button>
               )}
-              {isGenerating ? '请求中...' : characterStatus?.merchandise_task_status === 'processing' ? '生成中...' : '生成更多'}
-            </button>
+
+              {/* 创建更多周边按钮 - 始终可点击 */}
+              <button
+                onClick={() => setShowCustomMerchandiseModal(true)}
+                className="flex items-center gap-2 px-4 py-2 bg-cleanup-green text-black font-medium rounded-lg hover:bg-green-400 transition-colors"
+              >
+                <Play className="w-4 h-4" />
+                创建更多周边
+              </button>
+            </div>
           </div>
 
           {merchandiseItems.length === 0 ? (
@@ -425,25 +521,27 @@ export default function IPDetail({ ipCharacter, onBack, onUpdate }: IPDetailProp
               </div>
               <h3 className="text-lg font-medium text-gray-900 mb-2">还没有周边商品</h3>
               <p className="text-gray-600 mb-6">开始为您的IP形象生成精美的周边商品吧！</p>
-              <button
-                onClick={() => setShowMerchandiseModal(true)}
-                disabled={isGenerating || characterStatus?.merchandise_task_status === 'processing'}
-                className="px-6 py-3 bg-cleanup-green text-black font-semibold rounded-xl hover:bg-green-400 transition-colors disabled:opacity-50"
-              >
-                {isGenerating ? (
-                  <span className="flex items-center justify-center">
-                    <Loader className="w-5 h-5 mr-2 animate-spin" />
-                    请求中...
-                  </span>
-                ) : characterStatus?.merchandise_task_status === 'processing' ? (
-                   <span className="flex items-center justify-center">
-                    <Loader className="w-5 h-5 mr-2 animate-spin" />
-                    生成中...
-                  </span>
-                ) : (
-                  '立即生成'
+
+              <div className="flex items-center justify-center gap-4">
+                {/* 生成中的任务按钮 */}
+                {(isGenerating || characterStatus?.merchandise_task_status === 'processing') && (
+                  <button
+                    onClick={() => window.open('/tasks', '_blank')}
+                    className="flex items-center gap-2 px-6 py-3 bg-blue-100 text-blue-700 font-semibold rounded-xl hover:bg-blue-200 transition-colors"
+                  >
+                    <Loader className="w-5 h-5 animate-spin" />
+                    生成中的任务
+                  </button>
                 )}
-              </button>
+
+                {/* 立即生成按钮 - 始终可点击 */}
+                <button
+                  onClick={() => setShowCustomMerchandiseModal(true)}
+                  className="px-6 py-3 bg-cleanup-green text-black font-semibold rounded-xl hover:bg-green-400 transition-colors"
+                >
+                  立即生成
+                </button>
+              </div>
             </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
@@ -548,6 +646,16 @@ export default function IPDetail({ ipCharacter, onBack, onUpdate }: IPDetailProp
         isOpen={showTaskListModal}
         onClose={() => setShowTaskListModal(false)}
         characterId={ipCharacter.id}
+      />
+
+      {/* Custom Merchandise Modal */}
+      <CustomMerchandiseModal
+        isOpen={showCustomMerchandiseModal}
+        onClose={() => setShowCustomMerchandiseModal(false)}
+        characterId={ipCharacter.id}
+        characterName={ipCharacter.name}
+        characterImageUrl={ipCharacter.main_image_url}
+        onStartGeneration={handleCustomMerchandiseGeneration}
       />
     </div>
   );

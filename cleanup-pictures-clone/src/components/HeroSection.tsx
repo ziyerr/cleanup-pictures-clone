@@ -586,7 +586,7 @@ export default function HeroSection() {
               </div>
             ) : (
               /* Default State - 确保始终显示 */
-              <div className="relative">
+              <div className="relative" style={{ marginTop: '40px' }}>
                 <img
                   src="/task-home-image-replace/@Chat.png"
                   alt="IP周边产品展示"
@@ -631,12 +631,34 @@ export default function HeroSection() {
               <span className="text-black font-bold text-xs">30+</span>
             </div>
 
-            <div className="absolute -bottom-4 -left-4 w-12 h-12 bg-white rounded-full flex items-center justify-center shadow-lg border-2 border-cleanup-green z-10">
-              <span className="text-xs">📱</span>
+            {/* 左下角 - 手机壳 */}
+            <div className="absolute -bottom-4 -left-4 w-12 h-12 bg-white rounded-lg flex items-center justify-center shadow-lg border-2 border-cleanup-green z-10 hover:scale-110 transition-transform">
+              <span className="text-lg">📱</span>
             </div>
 
-            <div className="absolute top-1/2 -left-6 w-10 h-10 bg-white rounded-full flex items-center justify-center shadow-lg border border-gray-200 z-10">
-              <span className="text-xs">🗝️</span>
+            {/* 左侧中间 - 钥匙扣 */}
+            <div className="absolute top-1/2 -left-6 w-10 h-10 bg-white rounded-full flex items-center justify-center shadow-lg border border-gray-200 z-10 hover:scale-110 transition-transform">
+              <span className="text-sm">🗝️</span>
+            </div>
+
+            {/* 右下角 - T恤 */}
+            <div className="absolute -bottom-4 -right-4 w-12 h-12 bg-white rounded-lg flex items-center justify-center shadow-lg border border-gray-200 z-10 hover:scale-110 transition-transform">
+              <span className="text-lg">👕</span>
+            </div>
+
+            {/* 右侧中间 - 马克杯 */}
+            <div className="absolute top-1/2 -right-6 w-10 h-10 bg-white rounded-lg flex items-center justify-center shadow-lg border border-gray-200 z-10 hover:scale-110 transition-transform">
+              <span className="text-sm">☕</span>
+            </div>
+
+            {/* 上方中间 - 徽章 */}
+            <div className="absolute -top-4 left-1/2 transform -translate-x-1/2 w-10 h-10 bg-white rounded-full flex items-center justify-center shadow-lg border border-gray-200 z-10 hover:scale-110 transition-transform">
+              <span className="text-sm">🏅</span>
+            </div>
+
+            {/* 下方中间 - 贴纸 */}
+            <div className="absolute -bottom-4 left-1/2 transform -translate-x-1/2 w-10 h-10 bg-white rounded-full flex items-center justify-center shadow-lg border border-gray-200 z-10 hover:scale-110 transition-transform">
+              <span className="text-sm">🎨</span>
             </div>
           </div>
         </div>

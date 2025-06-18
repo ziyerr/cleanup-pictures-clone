@@ -1,13 +1,13 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { type NextRequest, NextResponse } from 'next/server';
 
 // Test AI API endpoint
 export async function GET() {
   try {
-    // Test basic API connectivity
+    // Test basic API connectivity - 使用正确的APICore配置
     const AI_API_CONFIG = {
-      apiKey: process.env.AI_API_KEY || 'sk-1eEdZF3JuFocE3eyrFBnmE1IgMFwbGcwPfMciRMdxF1Zl8Ke',
-      baseUrl: process.env.AI_API_BASE_URL || 'https://ismaque.org/v1',
-      model: 'gpt-4o-image' // 更新为gpt-4o-image模型
+      apiKey: process.env.AI_API_KEY || process.env.NEXT_PUBLIC_SPARROW_API_KEY || 'sk-FEtnKGEiUOj5Dv4kahtX2179RvK9OvaFGjfpf4o8Idbhk6Ql',
+      baseUrl: process.env.AI_API_BASE_URL || 'https://api.apicore.ai/v1',
+      model: 'gpt-4o-image' // 强制使用gpt-4o-image
     };
 
     console.log('Testing AI API with config:', {
@@ -64,43 +64,24 @@ export async function GET() {
 export async function POST(request: NextRequest) {
   try {
     const AI_API_CONFIG = {
-      apiKey: process.env.AI_API_KEY || 'sk-1eEdZF3JuFocE3eyrFBnmE1IgMFwbGcwPfMciRMdxF1Zl8Ke',
-      baseUrl: process.env.AI_API_BASE_URL || 'https://ismaque.org/v1',
-      model: 'gpt-4o-image' // 更新为gpt-4o-image模型
+      apiKey: process.env.AI_API_KEY || process.env.NEXT_PUBLIC_SPARROW_API_KEY || 'sk-FEtnKGEiUOj5Dv4kahtX2179RvK9OvaFGjfpf4o8Idbhk6Ql',
+      baseUrl: process.env.AI_API_BASE_URL || 'https://api.apicore.ai/v1',
+      model: 'gpt-4o-image' // 强制使用gpt-4o-image
     };
 
-    // 创建一个测试图片 (红色方块)
-    const canvas = new OffscreenCanvas(100, 100);
-    const ctx = canvas.getContext('2d')!;
-    ctx.fillStyle = '#ff0000';
-    ctx.fillRect(0, 0, 100, 100);
-    
-    const blob = await canvas.convertToBlob({ type: 'image/png' });
-    const buffer = await blob.arrayBuffer();
-    const base64 = btoa(String.fromCharCode(...new Uint8Array(buffer)));
-    const imageBase64 = `data:image/png;base64,${base64}`;
+    // 创建一个简单的测试图片base64 (1x1像素红色PNG)
+    const imageBase64 = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/5+hHgAHggJ/PchI7wAAAABJRU5ErkJggg==';
 
-    // Test gpt-4o-image endpoint with chat format
+    // Test gpt-4o-image endpoint with APICore format
     const requestBody = {
+      stream: false,
       model: AI_API_CONFIG.model,
       messages: [
         {
           role: "user",
-          content: [
-            {
-              type: "text",
-              text: "基于提供的参考图片，生成一个测试图片。要求JSON格式响应：```json\n{\"prompt\": \"测试生成一个简单的卡通形象\", \"ratio\": \"1:1\"}\n```"
-            },
-            {
-              type: "image_url", 
-              image_url: {
-                url: imageBase64
-              }
-            }
-          ]
+          content: `基于提供的参考图片，生成一个测试图片。要求JSON格式响应：\`\`\`json\n{"prompt": "测试生成一个简单的卡通形象", "ratio": "1:1"}\n\`\`\`\n\n[IMAGE]${imageBase64}[/IMAGE]`
         }
-      ],
-      stream: false
+      ]
     };
 
     console.log('Testing gpt-4o-image endpoint:', `${AI_API_CONFIG.baseUrl}/chat/completions`);

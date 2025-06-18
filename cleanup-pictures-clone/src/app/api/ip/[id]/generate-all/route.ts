@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { supabase } from '../../../../../lib/supabase';
+import { createClient } from '@supabase/supabase-js';
 import { generateAllMerchandise } from '../../../../../lib/ai-api';
 
 export async function POST(
@@ -8,18 +8,30 @@ export async function POST(
 ) {
   const { id: ipId } = await params;
   const userId = request.headers.get('x-user-id');
+  const authHeader = request.headers.get('authorization');
 
-  if (!userId) {
+  if (!userId || !authHeader) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
   try {
-    // 1. Fetch the IP character data
+    // Create authenticated Supabase client using the user's session token
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://wrfvysakckcmvquvwuei.supabase.co';
+    const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndyZnZ5c2FrY2tjbXZxdXZ3dWVpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDk0MDEzMDEsImV4cCI6MjA2NDk3NzMwMX0.LgQHwS9rbcmTfL2SegtcDByDTxWqraKMcXRQBPMtYJw';
+    
+    const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+      global: {
+        headers: {
+          Authorization: authHeader,
+        },
+      },
+    });
+
+    // 1. Fetch the IP character data with proper authentication
     const { data: ipCharacter, error: fetchError } = await supabase
       .from('user_ip_characters')
       .select('*')
       .eq('id', ipId)
-      .eq('user_id', userId)
       .single();
 
     if (fetchError || !ipCharacter) {

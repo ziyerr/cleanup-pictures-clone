@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { updateUserIPCharacterName } from '../../../../lib/supabase';
+import { updateIPCharacter } from '../../../../lib/supabase';
 import { getGenerationTask } from '../../../../lib/supabase';
 
 // Helper to get user ID from request (replace with your actual auth logic)
@@ -28,7 +28,7 @@ export async function PATCH(
       return NextResponse.json({ error: '名称不能为空' }, { status: 400 });
     }
 
-    const updatedCharacter = await updateUserIPCharacterName(ipId, name.trim(), userId);
+    const updatedCharacter = await updateIPCharacter(ipId, { name: name.trim() });
 
     return NextResponse.json(updatedCharacter);
 

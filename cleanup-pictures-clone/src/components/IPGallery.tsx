@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { Plus, Search, Filter, Grid, List, Share2, Download, Eye } from 'lucide-react';
-import { UserIPCharacter } from '../lib/supabase';
+import type { UserIPCharacter } from '../lib/supabase';
 import IPImage from './IPImage';
 
 interface IPGalleryProps {

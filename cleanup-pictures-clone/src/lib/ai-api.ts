@@ -21,6 +21,37 @@ export interface AIGenerationRequest {
   userId?: string;
 }
 
+// 演示模式已完全禁用 - 始终使用真实API生成
+// const DEMO_MODE = false; // 已删除，防止意外启用
+
+// 验证是否是演示图片URL
+const isDemoImageUrl = (imageUrl: string): boolean => {
+  if (!imageUrl) return true;
+  
+  const demoPatterns = [
+    'filesystem.site',
+    'example.com',
+    'placeholder',
+    'demo',
+    'mock',
+    'test-image',
+    'unsplash.com',
+    'picsum.photos',
+    'via.placeholder.com',
+    'dummyimage.com'
+  ];
+  
+  const isDemo = demoPatterns.some(pattern => 
+    imageUrl.toLowerCase().includes(pattern.toLowerCase())
+  );
+  
+  if (isDemo) {
+    console.warn('🚫 检测到演示图片URL:', imageUrl);
+  }
+  
+  return isDemo;
+};
+
 export interface AIGenerationResponse {
   success: boolean;
   taskId?: string;
@@ -43,22 +74,23 @@ export interface TaskStatusResponse {
   error?: string;
 }
 
-// API Configuration - APICore配置 (根据README.md文档更新)
+// API Configuration - APICore配置 (根据官方文档https://doc.apicore.ai/api-301177866更新)
+// 强制使用gpt-4o-image模型进行所有图片生成
 const AI_API_CONFIG = {
-  apiKey: process.env.AI_API_KEY || 'sk-1eEdZF3JuFocE3eyrFBnmE1IgMFwbGcwPfMciRMdxF1Zl8Ke',
-  baseUrl: process.env.AI_API_BASE_URL || 'https://ismaque.org/v1', // 使用README中的正确API地址
-  model: process.env.AI_API_MODEL || 'gpt-4o-image', // 更新为README中指定的gpt-4o-image模型
-  endpoint: '/chat/completions' // gpt-4o-image使用chat格式
+  apiKey: process.env.AI_API_KEY || process.env.NEXT_PUBLIC_SPARROW_API_KEY || 'sk-FEtnKGEiUOj5Dv4kahtX2179RvK9OvaFGjfpf4o8Idbhk6Ql',
+  baseUrl: process.env.AI_API_BASE_URL || 'https://api.apicore.ai/v1', // 使用官方文档中的正确API地址
+  model: 'gpt-4o-image', // 强制使用gpt-4o-image进行图生图，不允许环境变量覆盖
+  endpoint: '/chat/completions' // 使用chat格式
 };
 
-// 配置：完全使用gpt-4o-image模型，不再使用gpt-image-1
+// 配置：使用官方APICore endpoint - 全部强制使用gpt-4o-image
 const ALTERNATIVE_CONFIGS = [
   {
-    name: 'gpt-4o-image',
-    apiKey: 'sk-1eEdZF3JuFocE3eyrFBnmE1IgMFwbGcwPfMciRMdxF1Zl8Ke',
-    baseUrl: 'https://ismaque.org/v1',
+    name: 'gpt-4o-image-primary',
+    apiKey: process.env.AI_API_KEY || process.env.NEXT_PUBLIC_SPARROW_API_KEY || 'sk-FEtnKGEiUOj5Dv4kahtX2179RvK9OvaFGjfpf4o8Idbhk6Ql',
+    baseUrl: 'https://api.apicore.ai/v1',
     endpoint: '/chat/completions',
-    model: 'gpt-4o-image' // 统一使用gpt-4o-image模型
+    model: 'gpt-4o-image' // 强制使用gpt-4o-image进行图生图
   }
 ];
 
@@ -78,7 +110,7 @@ const fileToBase64 = (file: File): Promise<string> => {
 };
 
 // 优化的图片压缩函数 - 针对10M内图片，最大程度保持精度
-const compressImage = async (file: File, maxSizeKB: number = 5120): Promise<File | Blob> => {
+const compressImage = async (file: File, maxSizeKB = 5120): Promise<File | Blob> => {
   // 对于小文件（2MB以下），直接跳过压缩
   if (file.size <= 2 * 1024 * 1024) {
     console.log('文件较小，跳过压缩:', file.size, 'bytes');
@@ -234,23 +266,45 @@ const processGenerationTask = async (taskId: string, request: AIGenerationReques
         }
       }
 
-      // Save the character to the database if a user ID is provided
+      // 验证图片URL不是演示图片，然后保存到数据库
       if (request.userId) {
         try {
+          // 验证不是演示图片
+          if (isDemoImageUrl(finalImageUrl)) {
+            throw new Error('检测到演示图片URL，拒绝保存到数据库');
+          }
+          
           // The name could be derived from the prompt or be a default
           const characterName = request.prompt.substring(0, 20) || '新IP形象';
           await saveUserIPCharacter(request.userId, characterName, finalImageUrl);
-          console.log(`IP Character saved for user ${request.userId}`);
+          console.log(`✅ 真实IP形象已保存，用户: ${request.userId}, URL: ${finalImageUrl}`);
         } catch (saveError) {
-            console.error('保存用户IP形象失败:', saveError);
-            // Decide if this should fail the whole task. For now, we'll log it and continue.
+            console.error('❌ 保存用户IP形象失败:', saveError);
+            // 如果是演示图片，标记任务失败
+            if (saveError instanceof Error && saveError.message.includes('演示图片')) {
+              await updateGenerationTask(taskId, {
+                status: 'failed',
+                error_message: '生成的图片无效，请重试'
+              });
+              return;
+            }
         }
       }
 
-      await updateGenerationTask(taskId, {
-        status: 'completed',
-        result_image_url: finalImageUrl
-      });
+      // 最终验证：确保保存到数据库的URL不是演示图片
+      if (isDemoImageUrl(finalImageUrl)) {
+        console.error('🚫 拒绝保存演示图片URL到任务结果:', finalImageUrl);
+        await updateGenerationTask(taskId, {
+          status: 'failed',
+          error_message: '生成的图片无效，请重试生成'
+        });
+      } else {
+        await updateGenerationTask(taskId, {
+          status: 'completed',
+          result_image_url: finalImageUrl
+        });
+        console.log('✅ 真实图片URL已保存到任务结果:', finalImageUrl);
+      }
     } else {
       await updateGenerationTask(taskId, {
         status: 'failed',
@@ -415,7 +469,7 @@ const tryGenerateWithFallback = async (request: AIGenerationRequest): Promise<AI
     }
   }
   
-  // 所有API配置都失败，直接抛出错误
+  // 所有API配置都失败，直接抛出错误，不使用演示模式
   throw new Error('所有API配置都失败，请检查网络连接或API配额');
 };
 
@@ -429,11 +483,11 @@ const tryAPICall = async (config: typeof ALTERNATIVE_CONFIGS[0], prompt: string,
       hasImage: !!imageFile
     });
 
-    // 构建gpt-4o-image的chat格式请求
-    const messages: any[] = [];
+    // 构建APICore gpt-4o-image的请求格式 - 根据官方文档更新
+    let requestBody: any;
     
     if (imageFile) {
-      // 有图片的情况 - 图生图
+      // 图生图模式 - 包含图片和提示词
       let imageBase64: string;
       
       if (typeof imageFile === 'string') {
@@ -457,34 +511,30 @@ const tryAPICall = async (config: typeof ALTERNATIVE_CONFIGS[0], prompt: string,
         imageBase64 = `data:${mimeType};base64,${base64}`;
       }
 
-      messages.push({
-        role: "user",
-        content: [
+      // 根据APICore文档格式构建请求体
+      requestBody = {
+        stream: false,
+        model: config.model,
+        messages: [
           {
-            type: "text",
-            text: prompt
-          },
-          {
-            type: "image_url",
-            image_url: {
-              url: imageBase64
-            }
+            role: "user",
+            content: `${prompt}\n\n[IMAGE]${imageBase64}[/IMAGE]`
           }
         ]
-      });
+      };
     } else {
       // 纯文生图
-      messages.push({
-        role: "user",
-        content: prompt
-      });
+      requestBody = {
+        stream: false,
+        model: config.model,
+        messages: [
+          {
+            role: "user", 
+            content: prompt
+          }
+        ]
+      };
     }
-
-    const requestBody = {
-      model: config.model,
-      messages: messages,
-      max_tokens: 1000
-    };
 
     let response;
     try {
@@ -569,20 +619,24 @@ const tryAPICall = async (config: typeof ALTERNATIVE_CONFIGS[0], prompt: string,
     throw new Error('API响应中未找到有效的图片URL');
     
   } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
     console.error(`API调用异常 (${config.name}):`, {
       error: error,
-      message: error instanceof Error ? error.message : '未知错误',
+      message: errorMessage,
       type: error instanceof Error ? error.constructor.name : typeof error
     });
     
-    // 直接抛出错误，不使用演示模式
-    throw error;
+    // 抛出详细的错误信息
+    throw new Error(`API调用异常 (${config.name}): ${errorMessage}`);
   }
 };
 
 export const generateIPCharacter = async (request: AIGenerationRequest): Promise<AIGenerationResponse> => {
   try {
     console.log('开始AI生成请求:', request);
+
+    // 演示模式已禁用 - 强制使用真实API生成
+    console.log('🚀 使用真实AI生成模式 - 不使用演示数据');
 
     // 使用故障转移机制
     return await tryGenerateWithFallback(request);
@@ -637,12 +691,14 @@ export const generateIPCharacter = async (request: AIGenerationRequest): Promise
 };
 
 // Helper to call Sparrow API for 2D图生2D图 tasks using gpt-4o-image
+// 强制使用gpt-4o-image模型进行周边图生成
 async function triggerSparrowGeneration(prompt: string, imageUrl?: string) {
   if (!imageUrl) {
     throw new Error('2D图生2D图功能必须提供基础IP形象图作为输入');
   }
 
   try {
+    console.log('🎨 强制使用gpt-4o-image模型生成周边图');
     console.log('正在获取基础IP形象图:', imageUrl);
     
     // 获取图片并转换为base64
@@ -664,30 +720,27 @@ async function triggerSparrowGeneration(prompt: string, imageUrl?: string) {
 
     console.log('✅ 基础IP形象图已准备完成');
 
-    // 构建gpt-4o-image的chat格式请求
+    // 强制构建gpt-4o-image的请求格式，确保使用图生图功能
     const requestBody = {
-      model: AI_API_CONFIG.model, // gpt-4o-image
+      stream: false,
+      model: 'gpt-4o-image', // 强制指定gpt-4o-image模型
       messages: [
         {
           role: "user",
-          content: [
-            {
-              type: "text",
-              text: `基于提供的参考图片，${prompt}。要求JSON格式响应：\`\`\`json\n{"prompt": "${prompt}", "ratio": "1:1"}\n\`\`\``
-            },
-            {
-              type: "image_url", 
-              image_url: {
-                url: imageBase64
-              }
-            }
-          ]
+          content: `使用提供的IP形象图片作为参考，${prompt}。要求：
+1. 保持IP形象的核心特征和风格
+2. 根据周边类型调整设计布局
+3. 确保商品化效果良好
+4. 生成高质量的产品设计图
+
+参考图片：[IMAGE]${imageBase64}[/IMAGE]`
         }
-      ],
-      stream: false
+      ]
     };
 
-    console.log('发送gpt-4o-image请求，提示词:', prompt);
+    console.log('🚀 发送gpt-4o-image请求 - 强制模型模式');
+    console.log('提示词:', prompt.substring(0, 100) + '...');
+    
     const response = await fetch(`${AI_API_CONFIG.baseUrl}${AI_API_CONFIG.endpoint}`, {
       method: 'POST',
       headers: {
@@ -699,46 +752,54 @@ async function triggerSparrowGeneration(prompt: string, imageUrl?: string) {
 
     if (!response.ok) {
       const errorBody = await response.text();
-      console.error(`gpt-4o-image API error: ${response.statusText}`, errorBody);
-      throw new Error(`Failed to generate image for prompt: ${prompt}`);
+      console.error(`❌ gpt-4o-image API error: ${response.statusText}`, errorBody);
+      throw new Error(`Failed to generate image with gpt-4o-image for prompt: ${prompt}`);
     }
     
     const data = await response.json();
-    console.log('gpt-4o-image API 响应:', data);
+    console.log('📦 gpt-4o-image API 响应接收完成');
     
     // 解析gpt-4o-image的响应格式
     if (!data.choices || !Array.isArray(data.choices) || data.choices.length === 0) {
-      throw new Error('API返回的数据格式无效 - 缺少choices字段');
+      throw new Error('gpt-4o-image API返回的数据格式无效 - 缺少choices字段');
     }
     
     const content = data.choices[0]?.message?.content;
     if (!content) {
-      throw new Error('API返回的数据格式无效 - 缺少content字段');
+      throw new Error('gpt-4o-image API返回的数据格式无效 - 缺少content字段');
     }
     
     // 从响应内容中提取图片URL (gpt-4o-image返回Markdown格式，包含图片URL)
     const imageUrlMatch = content.match(/!\[.*?\]\((https?:\/\/[^\s)]+)\)/);
     if (imageUrlMatch && imageUrlMatch[1]) {
-      console.log('✅ 成功提取生成的图片URL:', imageUrlMatch[1]);
+      console.log('✅ 成功提取gpt-4o-image生成的图片URL:', imageUrlMatch[1]);
       return imageUrlMatch[1];
     } else {
-      console.log('响应内容:', content);
-      throw new Error('无法从API响应中提取图片URL');
+      // 尝试其他可能的URL格式
+      const urlMatch = content.match(/(https?:\/\/[^\s]+\.(png|jpg|jpeg|webp))/i);
+      if (urlMatch) {
+        console.log('✅ 成功提取gpt-4o-image生成的图片URL (备用格式):', urlMatch[1]);
+        return urlMatch[1];
+      }
+      
+      console.log('⚠️ gpt-4o-image响应内容:', content);
+      throw new Error('无法从gpt-4o-image API响应中提取图片URL');
     }
     
   } catch (error) {
-    console.error('❌ triggerSparrowGeneration 执行失败:', error);
-    throw new Error(`图片生成失败: ${error instanceof Error ? error.message : '未知错误'}`);
+    console.error('❌ gpt-4o-image周边图生成失败:', error);
+    throw new Error(`gpt-4o-image图片生成失败: ${error instanceof Error ? error.message : '未知错误'}`);
   }
 }
 
 // 生成多视图 - 增强版本，支持批量ID和字符关联
 export const generateMultiViews = async (
-  originalImageUrl: string, 
-  prompt: string, 
+  originalImageUrl: string,
+  prompt: string,
   userId?: string,
   batchId?: string,
-  characterId?: string
+  characterId?: string,
+  supabaseClient?: any // 可选的认证客户端
 ): Promise<{ [key: string]: string }> => {
   const views = [
     {
@@ -754,7 +815,7 @@ export const generateMultiViews = async (
   const tasks: Promise<GenerationTask>[] = [];
 
   for (const view of views) {
-    const task = createGenerationTask(`multi_view_${view.type}`, view.prompt, originalImageUrl, userId, batchId, characterId);
+    const task = createGenerationTask(`multi_view_${view.type}`, view.prompt, originalImageUrl, userId, batchId, characterId, supabaseClient);
     tasks.push(task);
   }
   
@@ -812,7 +873,8 @@ export const generateMerchandise = async (
   prompt: string,
   userId?: string,
   batchId?: string,
-  characterId?: string
+  characterId?: string,
+  supabaseClient?: any // 可选的认证客户端
 ): Promise<{ taskIds: Record<string, string> }> => {
   const merchandiseTypes = [
     { 
@@ -841,12 +903,13 @@ export const generateMerchandise = async (
 
   for (const item of merchandiseTypes) {
     const task = createGenerationTask(
-      `merchandise_${item.type}`, 
-      item.prompt, 
-      originalImageUrl, 
-      userId, 
-      batchId, 
-      characterId
+      `merchandise_${item.type}`,
+      item.prompt,
+      originalImageUrl,
+      userId,
+      batchId,
+      characterId,
+      supabaseClient
     );
     tasks.push(task);
   }
@@ -873,8 +936,9 @@ export const generate3DModel = async (
   userId?: string,
   leftViewUrl?: string,
   backViewUrl?: string,
+  supabaseClient?: any // 可选的认证客户端
 ): Promise<string> => {
-  const task = await createGenerationTask('3d_model', prompt || 'Generating 3D model', frontViewUrl, userId);
+  const task = await createGenerationTask('3d_model', prompt || 'Generating 3D model', frontViewUrl, userId, undefined, undefined, supabaseClient);
   process3DModelTask(task.id);
   return task.id;
 };
@@ -942,7 +1006,8 @@ export const generateAllMerchandise = async (
   originalImageUrl: string,
   characterName: string,
   characterDescription: string,
-  userId: string
+  userId: string,
+  supabaseClient?: any // 可选的认证客户端
 ): Promise<{ batchId: string; taskIds: Record<string, string> }> => {
   // 生成一个临时的batch ID，实际使用时会由数据库生成UUID
   const batchId = uuidv4();
@@ -951,29 +1016,32 @@ export const generateAllMerchandise = async (
   try {
     // 1. 生成多视图
     const multiViewResult = await generateMultiViews(
-      originalImageUrl, 
-      prompt, 
-      userId, 
-      batchId, 
-      characterId
+      originalImageUrl,
+      prompt,
+      userId,
+      batchId,
+      characterId,
+      supabaseClient
     );
-    
+
     // 2. 生成周边商品
     const merchandiseResult = await generateMerchandise(
       originalImageUrl,
       prompt,
       userId,
       batchId,
-      characterId
+      characterId,
+      supabaseClient
     );
-    
+
     // 3. 创建3D模型任务（等待多视图完成）
     const model3DTaskId = await generate3DModel(
       originalImageUrl,
       prompt,
       userId,
       undefined, // leftViewUrl - 稍后从多视图任务中获取
-      undefined  // backViewUrl - 稍后从多视图任务中获取
+      undefined, // backViewUrl - 稍后从多视图任务中获取
+      supabaseClient
     );
     
     // 合并所有任务ID
@@ -1037,25 +1105,57 @@ const updateCharacterOnTaskCompletion = async (task: GenerationTask) => {
         const existingUrls = character?.merchandise_urls || {};
         const newUrls = { ...existingUrls, [itemType]: task.result_image_url };
         updateData.merchandise_urls = newUrls;
+        
+        console.log(`Updating merchandise_urls for character ${characterId}:`, {
+          itemType,
+          imageUrl: task.result_image_url,
+          existingUrls,
+          newUrls
+        });
     } else if (task.task_type === '3d_model' && task.result_data?.model_url) {
         updateData.model_3d_url = task.result_data.model_url as string;
     }
 
     if (Object.keys(updateData).length > 0) {
-        await supabase
+        console.log(`Updating character ${characterId} with data:`, updateData);
+        const { error: updateError } = await supabase
             .from('user_ip_characters')
             .update(updateData)
             .eq('id', characterId);
+            
+        if (updateError) {
+            console.error('Failed to update character:', updateError);
+        } else {
+            console.log(`Successfully updated character ${characterId}`);
+        }
     }
     
     // Check if all tasks for this character are done
     const allTasks = await getCharacterTasks(characterId);
-    const allCompleted = allTasks.every(t => t.status === 'completed');
-    if (allCompleted && allTasks.length > 0) {
-        await supabase
+    const completedTasks = allTasks.filter(t => t.status === 'completed');
+    const failedTasks = allTasks.filter(t => t.status === 'failed');
+    const pendingOrProcessingTasks = allTasks.filter(t => t.status === 'pending' || t.status === 'processing');
+    
+    console.log(`Character ${characterId} task completion check:`, {
+      total: allTasks.length,
+      completed: completedTasks.length,
+      failed: failedTasks.length,
+      pendingOrProcessing: pendingOrProcessingTasks.length
+    });
+    
+    // Mark as completed if all tasks are done (either completed or failed) and at least one completed
+    if (pendingOrProcessingTasks.length === 0 && allTasks.length > 0 && completedTasks.length > 0) {
+        console.log(`Marking character ${characterId} merchandise_task_status as completed`);
+        const { error: updateError } = await supabase
             .from('user_ip_characters')
             .update({ merchandise_task_status: 'completed' })
             .eq('id', characterId);
+            
+        if (updateError) {
+            console.error('Failed to update merchandise_task_status:', updateError);
+        } else {
+            console.log(`Successfully updated character ${characterId} status to completed`);
+        }
     }
 };
 
@@ -1140,7 +1240,8 @@ export const testAPIConnectivity = async () => {
     const response = await fetch(`${AI_API_CONFIG.baseUrl}/models`, {
       method: 'GET',
       headers: {
-        'Authorization': `Bearer ${AI_API_CONFIG.apiKey}`
+        'Authorization': `Bearer ${AI_API_CONFIG.apiKey}`,
+        'Content-Type': 'application/json'
       }
     });
     
@@ -1163,7 +1264,8 @@ export const testAPIConnectivity = async () => {
     const response = await fetch(`${AI_API_CONFIG.baseUrl}${AI_API_CONFIG.endpoint}`, {
       method: 'OPTIONS', // Use OPTIONS to test CORS/endpoint availability
       headers: {
-        'Authorization': `Bearer ${AI_API_CONFIG.apiKey}`
+        'Authorization': `Bearer ${AI_API_CONFIG.apiKey}`,
+        'Content-Type': 'application/json'
       }
     });
     

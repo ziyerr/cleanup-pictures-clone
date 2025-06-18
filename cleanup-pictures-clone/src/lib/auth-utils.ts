@@ -28,7 +28,7 @@ export const getUserAvatarUrl = (user: AuthUser | null): string | null => {
 export const clearUserData = (): void => {
   if (typeof window !== 'undefined') {
     try {
-      localStorage.removeItem('popverse_user');
+      localStorage.removeItem('current_user');
       localStorage.removeItem('user_preferences');
       localStorage.removeItem('user_session');
     } catch (error) {
@@ -65,7 +65,7 @@ export const isUserLoggedIn = (): boolean => {
   if (typeof window === 'undefined') return false;
   
   try {
-    const savedUser = localStorage.getItem('popverse_user');
+    const savedUser = localStorage.getItem('current_user');
     if (!savedUser) return false;
     
     const user = JSON.parse(savedUser);

@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { Button } from './ui/button';
 import { Menu, User, X, LogOut, Palette, ChevronDown, ListTodo } from 'lucide-react';
 import AuthModal from './AuthModal';
-import TaskListModal from './TaskListModal';
+
 import { useUser } from '../contexts/UserContext';
 import { clearUserData } from '../lib/auth-utils';
 
@@ -14,8 +14,8 @@ export default function Header() {
   const [activeSection, setActiveSection] = useState('');
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
-  const [showTaskListModal, setShowTaskListModal] = useState(false);
-  const { currentUser, setCurrentUser, isLoading } = useUser();
+
+  const { currentUser, setCurrentUser, isLoading, logout } = useUser();
 
   const navItems = [
     { id: 'usecases', label: '应用场景', href: '#usecases' },
@@ -45,10 +45,17 @@ export default function Header() {
   };
 
   // Handle user logout
-  const handleLogout = () => {
-    clearUserData();
-    setCurrentUser(null);
-    setShowUserMenu(false);
+  const handleLogout = async () => {
+    try {
+      await logout(); // 使用UserContext的logout方法，它会处理Supabase登出
+      setShowUserMenu(false);
+    } catch (error) {
+      console.error('登出错误:', error);
+      // 如果Supabase登出失败，至少清除本地数据
+      clearUserData();
+      setCurrentUser(null);
+      setShowUserMenu(false);
+    }
   };
 
   // Toggle user menu
@@ -214,16 +221,14 @@ export default function Header() {
                           <Palette className="w-4 h-4 mr-2" />
                           我的IP工坊
                         </Link>
-                        <button
-                          onClick={() => {
-                            setShowTaskListModal(true);
-                            setShowUserMenu(false);
-                          }}
+                        <Link
+                          href="/tasks"
                           className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                          onClick={() => setShowUserMenu(false)}
                         >
                           <ListTodo className="w-4 h-4 mr-2" />
                           任务列表
-                        </button>
+                        </Link>
                         <button
                           onClick={handleLogout}
                           className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
@@ -307,6 +312,14 @@ export default function Header() {
                       <Palette className="w-4 h-4 mr-2" />
                       我的IP工坊
                     </Link>
+                    <Link
+                      href="/tasks"
+                      className="flex items-center w-full px-2 py-2 text-sm text-gray-700 hover:text-black"
+                      onClick={() => setIsMobileMenuOpen(false)}
+                    >
+                      <ListTodo className="w-4 h-4 mr-2" />
+                      任务列表
+                    </Link>
                     <button
                       onClick={handleLogout}
                       className="flex items-center w-full px-2 py-2 text-sm text-gray-700 hover:text-black"
@@ -341,11 +354,7 @@ export default function Header() {
         }}
       />
 
-      {/* Task List Modal */}
-      <TaskListModal
-        isOpen={showTaskListModal}
-        onClose={() => setShowTaskListModal(false)}
-      />
+
     </header>
   );
 }

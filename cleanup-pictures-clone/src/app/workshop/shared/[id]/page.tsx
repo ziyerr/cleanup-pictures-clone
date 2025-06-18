@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { Share2, Download, Heart, Eye, ExternalLink, Home } from 'lucide-react';
-import { UserIPCharacter } from '../../../../lib/supabase';
+import type { UserIPCharacter } from '../../../../lib/supabase';
 
 export default function SharedIPPage() {
   const params = useParams();

@@ -1,12 +1,9 @@
 import { createClient } from '@supabase/supabase-js';
-import { v4 as uuidv4 } from 'uuid';
+import { UserSubscription, UsageQuota, SubscriptionPlan } from './creem-config';
 
-// Supabase配置 - 使用真实数据库
+// Supabase配置
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://wrfvysakckcmvquvwuei.supabase.co';
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndyZnZ5c2FrY2tjbXZxdXZ3dWVpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDk0MDEzMDEsImV4cCI6MjA2NDk3NzMwMX0.LgQHwS9rbcmTfL2SegtcDByDTxWqraKMcXRQBPMtYJw';
-
-// 不再使用演示模式
-const isDemoMode = false;
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
@@ -27,8 +24,6 @@ export interface GenerationTask {
   updated_at: string;
 }
 
-
-
 export interface UserIPCharacter {
   id: string;
   user_id: string;
@@ -43,6 +38,14 @@ export interface UserIPCharacter {
   created_at: string;
 }
 
+export interface AuthUser {
+  id: string;
+  email?: string | null;
+  username: string;
+  user_metadata?: Record<string, any>;
+  created_at: string;
+}
+
 // Task management functions
 export const createGenerationTask = async (
   taskType: GenerationTask['task_type'],
@@ -50,7 +53,8 @@ export const createGenerationTask = async (
   originalImageUrl?: string,
   userId?: string,
   batchId?: string,
-  parentCharacterId?: string
+  parentCharacterId?: string,
+  supabaseClient?: any // 可选的认证客户端
 ): Promise<GenerationTask> => {
   const task: Partial<GenerationTask> = {
     user_id: userId,
@@ -62,7 +66,9 @@ export const createGenerationTask = async (
     parent_character_id: parentCharacterId,
   };
 
-  const { data, error } = await supabase
+  // 使用传入的客户端或默认客户端
+  const client = supabaseClient || supabase;
+  const { data, error } = await client
     .from('generation_tasks')
     .insert([task])
     .select()
@@ -96,31 +102,14 @@ export const updateGenerationTask = async (
   return data;
 };
 
-// 批量获取任务状态
 export const getBatchTasks = async (batchId: string): Promise<GenerationTask[]> => {
   const { data, error } = await supabase
     .from('generation_tasks')
     .select('*')
-    .eq('batch_id', batchId)
-    .order('created_at', { ascending: true });
+    .eq('batch_id', batchId);
 
   if (error) {
     throw new Error(`Failed to get batch tasks: ${error.message}`);
-  }
-
-  return data || [];
-};
-
-// 获取角色相关的所有任务
-export const getCharacterTasks = async (characterId: string): Promise<GenerationTask[]> => {
-  const { data, error } = await supabase
-    .from('generation_tasks')
-    .select('*')
-    .eq('parent_character_id', characterId)
-    .order('created_at', { ascending: false });
-
-  if (error) {
-    throw new Error(`Failed to get character tasks: ${error.message}`);
   }
 
   return data || [];
@@ -135,7 +124,7 @@ export const getGenerationTask = async (taskId: string): Promise<GenerationTask 
 
   if (error) {
     if (error.code === 'PGRST116') {
-      return null; // Task not found
+      return null; // No rows found
     }
     throw new Error(`Failed to get task: ${error.message}`);
   }
@@ -143,241 +132,57 @@ export const getGenerationTask = async (taskId: string): Promise<GenerationTask 
   return data;
 };
 
-// Image upload function
-export const uploadImageToSupabase = async (
-  imageBlob: Blob,
-  fileName: string,
-  bucket = 'generated-images'
-): Promise<string> => {
-  const { data, error } = await supabase.storage
-    .from(bucket)
-    .upload(fileName, imageBlob, {
-      contentType: imageBlob.type,
-      upsert: true,
-    });
+export const getUserTasks = async (userId: string): Promise<GenerationTask[]> => {
+  const { data, error } = await supabase
+    .from('generation_tasks')
+    .select('*')
+    .eq('user_id', userId)
+    .order('created_at', { ascending: false });
 
   if (error) {
-    throw new Error(`Failed to upload image: ${error.message}`);
+    throw new Error(`Failed to get user tasks: ${error.message}`);
   }
 
-  const { data: { publicUrl } } = supabase.storage
-    .from(bucket)
-    .getPublicUrl(data.path);
-
-  return publicUrl;
+  return data || [];
 };
 
-// Enhanced User interface for Supabase Auth
-export interface AuthUser {
-  id: string;
-  email?: string;
-  username?: string;
-  user_metadata?: {
-    username?: string;
-  };
-  created_at: string;
-}
-
-// User management functions using Supabase Auth
-export const registerUser = async (username: string, password: string, email?: string): Promise<AuthUser> => {
-  try {
-    console.log('开始用户注册:', { username, email: email ? '[PROVIDED]' : '[NOT PROVIDED]' });
-    
-    // Use email or generate a unique email for username-only registration
-    const userEmail = email || `${username}@temp.local`;
-    
-    const { data, error } = await supabase.auth.signUp({
-      email: userEmail,
-      password: password,
-      options: {
-        data: {
-          username: username,
-        }
-      }
-    });
-
-    console.log('Supabase Auth 注册响应:', { 
-      user: data.user ? { id: data.user.id, email: data.user.email } : null, 
-      error 
-    });
-
-    if (error) {
-      console.error('用户注册错误详情:', error);
-      if (error.message.includes('already registered')) {
-        throw new Error('用户已存在');
-      }
-      throw new Error(`注册失败: ${error.message}`);
-    }
-
-    if (!data.user) {
-      throw new Error('注册失败: 未返回用户数据');
-    }
-
-    const authUser: AuthUser = {
-      id: data.user.id,
-      email: data.user.email,
-      username: username,
-      user_metadata: data.user.user_metadata,
-      created_at: data.user.created_at || new Date().toISOString(),
-    };
-
-    console.log('用户注册成功:', { id: authUser.id, username: authUser.username });
-    return authUser;
-  } catch (err) {
-    console.error('registerUser 捕获错误:', err);
-    if (err instanceof Error) {
-      throw err;
-    }
-    throw new Error(`注册失败: ${String(err)}`);
-  }
-};
-
-export const loginUser = async (username: string, password: string): Promise<AuthUser> => {
-  try {
-    console.log('开始用户登录:', { username });
-    
-    // Try to login with username as email first
-    let email = username;
-    
-    // If username doesn't contain @, try with temp email format
-    if (!username.includes('@')) {
-      email = `${username}@temp.local`;
-    }
-    
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email: email,
-      password: password,
-    });
-
-    if (error) {
-      console.error('登录错误详情:', error);
-      if (error.message.includes('Invalid login credentials')) {
-        throw new Error('用户名或密码错误');
-      }
-      throw new Error(`登录失败: ${error.message}`);
-    }
-
-    if (!data.user) {
-      throw new Error('登录失败: 未返回用户数据');
-    }
-
-    const authUser: AuthUser = {
-      id: data.user.id,
-      email: data.user.email,
-      username: data.user.user_metadata?.username || username,
-      user_metadata: data.user.user_metadata,
-      created_at: data.user.created_at || new Date().toISOString(),
-    };
-
-    console.log('用户登录成功:', { id: authUser.id, username: authUser.username });
-    return authUser;
-  } catch (err) {
-    console.error('loginUser 捕获错误:', err);
-    if (err instanceof Error) {
-      throw err;
-    }
-    throw new Error(`登录失败: ${String(err)}`);
-  }
-};
-
-// Get current authenticated user
-export const getCurrentUser = async (): Promise<AuthUser | null> => {
-  try {
-    const { data: { user }, error } = await supabase.auth.getUser();
-    
-    if (error) {
-      console.error('获取当前用户错误:', error);
-      return null;
-    }
-    
-    if (!user) {
-      return null;
-    }
-    
-    return {
-      id: user.id,
-      email: user.email,
-      username: user.user_metadata?.username,
-      user_metadata: user.user_metadata,
-      created_at: user.created_at || new Date().toISOString(),
-    };
-  } catch (err) {
-    console.error('getCurrentUser 捕获错误:', err);
-    return null;
-  }
-};
-
-// Logout user
-export const logoutUser = async (): Promise<void> => {
-  try {
-    const { error } = await supabase.auth.signOut();
-    if (error) {
-      console.error('登出错误:', error);
-      throw new Error(`登出失败: ${error.message}`);
-    }
-    console.log('用户登出成功');
-  } catch (err) {
-    console.error('logoutUser 捕获错误:', err);
-    if (err instanceof Error) {
-      throw err;
-    }
-    throw new Error(`登出失败: ${String(err)}`);
-  }
-};
-
+// IP Character management functions
 export const saveUserIPCharacter = async (
   userId: string,
   name: string,
-  mainImageUrl: string
+  mainImageUrl: string,
+  description?: string
 ): Promise<UserIPCharacter> => {
   try {
-    console.log('开始保存IP形象:', { userId, name, mainImageUrl, isDemoMode });
+    console.log('保存IP形象:', { userId, name, mainImageUrl });
     
-    // 演示模式处理
-    if (isDemoMode) {
-      console.log('🎨 演示模式：模拟保存IP形象');
-      const demoCharacter: UserIPCharacter = {
-        id: uuidv4(),
-        user_id: userId,
-        name,
-        main_image_url: mainImageUrl,
-        created_at: new Date().toISOString(),
-      };
-      
-      // 模拟延迟
-      await new Promise(resolve => setTimeout(resolve, 500));
-      
-      console.log('演示模式：IP形象保存成功', demoCharacter);
-      return demoCharacter;
-    }
-    
-    // 检查当前用户是否已认证
+    // 检查当前认证状态
     const { data: { user }, error: authError } = await supabase.auth.getUser();
+    console.log('当前认证用户:', user?.id, '目标用户:', userId);
     
     if (authError) {
-      console.error('获取当前认证用户失败:', authError);
-      throw new Error('认证状态异常，请重新登录');
+      console.error('认证检查失败:', authError);
+      throw new Error(`认证失败: ${authError.message}`);
     }
     
     if (!user) {
       console.error('用户未认证');
-      throw new Error('用户未登录，请先登录');
+      throw new Error('用户未认证，请先登录');
     }
     
     if (user.id !== userId) {
-      console.error('用户ID不匹配:', { sessionUserId: user.id, requestUserId: userId });
-      throw new Error('用户身份验证失败，请重新登录');
+      console.error('用户ID不匹配:', { authUserId: user.id, requestUserId: userId });
+      throw new Error('用户ID不匹配');
     }
-    
-    console.log('用户认证验证通过:', { userId: user.id, email: user.email });
-    
+
     const character: Partial<UserIPCharacter> = {
       user_id: userId,
       name,
       main_image_url: mainImageUrl,
+      description,
     };
 
-    console.log('准备插入的数据:', character);
+    console.log('准备插入数据:', character);
 
     const { data, error } = await supabase
       .from('user_ip_characters')
@@ -385,137 +190,40 @@ export const saveUserIPCharacter = async (
       .select()
       .single();
 
-    console.log('Supabase响应:', { data, error });
-
     if (error) {
-      console.error('Supabase错误详情:', error);
-      
-      // 检查错误对象是否为空或无效
-      if (!error || (typeof error === 'object' && Object.keys(error).length === 0)) {
-        console.error('收到空的Supabase错误对象，可能是连接问题');
-        throw new Error('数据库连接失败，请检查网络连接后重试');
-      }
-      
-      // 获取错误信息
-      const errorMessage = error.message || error.details || error.hint || '';
-      const errorCode = error.code || 'unknown';
-      
-      // 网络错误处理
-      if (errorMessage.includes('Failed to fetch') || errorMessage.includes('NetworkError') || errorMessage.includes('fetch')) {
-        throw new Error('网络连接失败，请检查网络后重试');
-      }
-      
-      // 认证错误处理
-      if (errorMessage.includes('JWT') || errorMessage.includes('unauthorized') || errorCode === '42501') {
-        throw new Error('认证失败，请重新登录');
-      }
-      
-      // 数据库连接错误
-      if (errorCode === 'PGRST301' || errorMessage.includes('connection') || errorMessage.includes('timeout')) {
-        throw new Error('数据库连接失败，请稍后重试');
-      }
-      
-      // RLS权限错误
-      if (errorCode === '42501' || errorMessage.includes('permission denied') || errorMessage.includes('policy')) {
-        throw new Error('权限不足，请确认您已登录');
-      }
-      
-      // 通用错误处理
-      if (errorMessage) {
-        throw new Error(`保存IP形象失败: ${errorMessage} (code: ${errorCode})`);
-      } else {
-        throw new Error(`保存IP形象失败: 未知错误 (code: ${errorCode})`);
-      }
-    }
-
-    if (!data) {
-      throw new Error('保存IP形象失败: 未返回数据');
+      console.error('插入数据失败:', error);
+      throw new Error(`保存IP形象失败: ${error.message}`);
     }
 
     console.log('IP形象保存成功:', data);
     return data;
-  } catch (err) {
-    console.error('saveUserIPCharacter 捕获错误:', err);
-    
-    // 网络错误的特殊处理
-    if (err instanceof TypeError && err.message.includes('Failed to fetch')) {
-      throw new Error('网络连接失败，请检查网络连接后重试');
-    }
-    
-    if (err instanceof Error) {
-      throw err;
-    }
-    throw new Error(`保存IP形象失败: ${String(err)}`);
+  } catch (error) {
+    console.error('saveUserIPCharacter 错误:', error);
+    throw error;
   }
-};
-
-export const getIPCharacterWithStatus = async (ipId: string) => {
-  // 1. Fetch the IP character
-  const { data: character, error: charError } = await supabase
-    .from('user_ip_characters')
-    .select('*')
-    .eq('id', ipId)
-    .single();
-
-  if (charError) {
-    if (charError.code === 'PGRST116') return null;
-    throw new Error(`Failed to fetch IP character: ${charError.message}`);
-  }
-  if (!character) return null;
-
-  // 2. Find the original generation task using a partial match on the URL path
-  let initialTask = null;
-  try {
-    const urlParts = new URL(character.main_image_url);
-    const imagePath = urlParts.pathname.split('/').slice(4).join('/'); // Extracts path after /public/bucket-name/
-    
-    const { data, error } = await supabase
-      .from('generation_tasks')
-      .select('id, status')
-      .like('result_image_url', `%${imagePath}`)
-      .eq('task_type', 'ip_generation')
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .single();
-
-    if (error && error.code !== 'PGRST116') {
-      throw error;
-    }
-    initialTask = data;
-  } catch (e) {
-    console.error("Error fetching initial task by URL, possibly invalid URL:", e);
-  }
-
-
-  // 3. Find the latest ongoing merchandise task for this character
-  const { data: merchandiseTask, error: merchTaskError } = await supabase
-    .from('generation_tasks')
-    .select('id, status, task_type')
-    .eq('prompt', character.id)
-    .in('status', ['pending', 'processing'])
-    .order('created_at', { ascending: false })
-    .limit(1)
-    .single();
-
-  if (merchTaskError && merchTaskError.code !== 'PGRST116') {
-    console.error('Error fetching merchandise task:', merchTaskError);
-  }
-
-  return {
-    ...character,
-    initial_task_status: initialTask?.status || 'completed',
-    merchandise_task_status: merchandiseTask?.status || null,
-  };
 };
 
 export const getUserIPCharacters = async (userId: string): Promise<UserIPCharacter[]> => {
   try {
-    console.log(`正在为用户 ${userId} 获取IP形象列表`, { isDemoMode });
+    console.log(`正在为用户 ${userId} 获取IP形象列表`);
     
-    // 演示模式处理
-    if (isDemoMode) {
-      console.log('🎨 演示模式：返回空的IP形象列表');
-      return [];
+    // 检查当前认证状态
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    console.log('当前认证用户:', user?.id, '目标用户:', userId);
+    
+    if (authError) {
+      console.error('认证检查失败:', authError);
+      throw new Error(`认证失败: ${authError.message}`);
+    }
+    
+    if (!user) {
+      console.error('用户未认证');
+      throw new Error('用户未认证，请先登录');
+    }
+    
+    if (user.id !== userId) {
+      console.error('用户ID不匹配:', { authUserId: user.id, requestUserId: userId });
+      throw new Error('用户ID不匹配');
     }
     
     const { data, error } = await supabase
@@ -525,59 +233,570 @@ export const getUserIPCharacters = async (userId: string): Promise<UserIPCharact
       .order('created_at', { ascending: false });
 
     if (error) {
-      console.error('获取用户IP形象列表失败:', error);
-      
-      // 网络错误处理
-      if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError')) {
-        throw new Error('网络连接失败，请检查网络后重试');
-      }
-      
-      throw new Error(`获取IP形象列表失败: ${error.message}`);
+      throw new Error(`获取IP列表失败: ${error.message}`);
     }
 
+    console.log(`从数据库获取到 ${data?.length || 0} 个IP形象`);
     return data || [];
   } catch (err) {
     console.error('getUserIPCharacters 捕获错误:', err);
     
-    // 网络错误的特殊处理
-    if (err instanceof TypeError && err.message.includes('Failed to fetch')) {
-      throw new Error('网络连接失败，请检查网络连接后重试');
-    }
-    
     if (err instanceof Error) {
       throw err;
     }
-    throw new Error(`获取IP形象列表失败: ${String(err)}`);
+    throw new Error('获取IP列表失败: 未知错误');
   }
 };
 
-export const updateUserIPCharacterName = async (ipId: string, newName: string, userId: string): Promise<UserIPCharacter> => {
+export const getIPCharacterWithStatus = async (ipId: string) => {
   try {
-    console.log(`正在为用户 ${userId} 更新IP ${ipId} 的名称为 "${newName}"`);
-
+    console.log('获取IP形象状态:', ipId);
+    
+    // 检查当前认证状态
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    console.log('当前认证用户:', user?.id);
+    
+    if (authError) {
+      console.error('认证检查失败:', authError);
+      throw new Error(`认证失败: ${authError.message}`);
+    }
+    
+    if (!user) {
+      console.error('用户未认证');
+      throw new Error('用户未认证，请先登录');
+    }
+    
     const { data, error } = await supabase
       .from('user_ip_characters')
-      .update({ name: newName })
+      .select('*')
       .eq('id', ipId)
-      .eq('user_id', userId) // Ensure user can only update their own IP
+      .single();
+
+    if (error) {
+      if (error.code === 'PGRST116') {
+        console.log('IP形象不存在:', ipId);
+        return null; // No rows found
+      }
+      console.error('获取IP形象失败:', error);
+      throw new Error(`获取IP形象失败: ${error.message}`);
+    }
+    
+    // 验证用户是否有权访问这个IP
+    if (data.user_id !== user.id) {
+      console.error('用户无权访问此IP:', { ipUserId: data.user_id, currentUserId: user.id });
+      throw new Error('无权访问此IP形象');
+    }
+
+    console.log('成功获取IP形象状态:', {
+      id: data.id,
+      name: data.name,
+      merchandise_task_status: data.merchandise_task_status,
+      merchandise_urls: data.merchandise_urls,
+      merchandise_count: data.merchandise_urls ? Object.keys(data.merchandise_urls).length : 0
+    });
+    
+    return {
+      ...data,
+      initial_task_status: 'completed',
+      merchandise_task_status: data.merchandise_task_status || null,
+    };
+  } catch (error) {
+    console.error('获取IP形象状态失败:', error);
+    if (error instanceof Error) {
+      throw error;
+    }
+    return null;
+  }
+};
+
+export const updateIPCharacter = async (
+  ipId: string,
+  updates: Partial<UserIPCharacter>
+): Promise<UserIPCharacter> => {
+  const { data, error } = await supabase
+    .from('user_ip_characters')
+    .update(updates)
+    .eq('id', ipId)
+    .select()
+    .single();
+
+  if (error) {
+    throw new Error(`更新IP形象失败: ${error.message}`);
+  }
+
+  return data;
+};
+
+export const deleteIPCharacter = async (ipId: string): Promise<void> => {
+  const { error } = await supabase
+    .from('user_ip_characters')
+    .delete()
+    .eq('id', ipId);
+
+  if (error) {
+    throw new Error(`删除IP形象失败: ${error.message}`);
+  }
+};
+
+// User management - now only used for getting current user info
+export const getCurrentUser = (): AuthUser | null => {
+  // This function is no longer used with Supabase auth
+  // User info comes from Supabase session in UserContext
+  return null;
+};
+
+// Batch operations
+export const retryGenerationTask = async (taskId: string): Promise<GenerationTask> => {
+  return updateGenerationTask(taskId, {
+    status: 'pending',
+    error_message: undefined,
+    updated_at: new Date().toISOString(),
+  });
+};
+
+export const generateMerchandiseForCharacter = async (
+  characterId: string,
+  userId: string
+): Promise<string> => {
+  // Create a batch for merchandise generation
+  const batchId = `merchandise_${Date.now()}`;
+  
+  const merchandiseTypes = [
+    'phone_case',
+    'keychain', 
+    'blind_box',
+    'chat_sticker'
+  ];
+
+  // Create tasks for each merchandise type
+  const tasks = await Promise.all(
+    merchandiseTypes.map(type =>
+      createGenerationTask(
+        'merchandise_generation',
+        `Generate ${type} design`,
+        undefined,
+        userId,
+        batchId,
+        characterId
+      )
+    )
+  );
+
+  console.log(`Created ${tasks.length} merchandise generation tasks for character ${characterId}`);
+  return batchId;
+};
+
+// Image upload function for Supabase Storage
+export const uploadImageToSupabase = async (
+  file: File | Blob,
+  fileName: string,
+  bucket: string = 'generated-images'
+): Promise<string> => {
+  try {
+    console.log(`正在上传图片到Supabase Storage: ${fileName}`);
+    
+    // Generate unique filename with timestamp
+    const timestamp = Date.now();
+    const uniqueFileName = `${timestamp}_${fileName}`;
+    
+    const { data, error } = await supabase.storage
+      .from(bucket)
+      .upload(uniqueFileName, file, {
+        cacheControl: '3600',
+        upsert: false
+      });
+
+    if (error) {
+      console.error('上传到Supabase Storage失败:', error);
+      throw new Error(`图片上传失败: ${error.message}`);
+    }
+
+    // Get public URL
+    const { data: { publicUrl } } = supabase.storage
+      .from(bucket)
+      .getPublicUrl(uniqueFileName);
+
+    console.log(`图片上传成功，URL: ${publicUrl}`);
+    return publicUrl;
+  } catch (error) {
+    console.error('uploadImageToSupabase 错误:', error);
+    throw error instanceof Error ? error : new Error('图片上传失败');
+  }
+};
+
+// Get tasks for a specific character
+export const getCharacterTasks = async (characterId: string): Promise<GenerationTask[]> => {
+  try {
+    console.log(`正在获取角色 ${characterId} 的相关任务`);
+    
+    const { data, error } = await supabase
+      .from('generation_tasks')
+      .select('*')
+      .eq('parent_character_id', characterId)
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      throw new Error(`获取角色任务失败: ${error.message}`);
+    }
+
+    console.log(`找到 ${data?.length || 0} 个相关任务`);
+    return data || [];
+  } catch (error) {
+    console.error('getCharacterTasks 错误:', error);
+    throw error instanceof Error ? error : new Error('获取角色任务失败');
+  }
+};
+
+// ============================================
+// Subscription Management Functions
+// ============================================
+
+// Create user subscription
+export const createUserSubscription = async (
+  userId: string,
+  plan: SubscriptionPlan,
+  creemSubscriptionId?: string,
+  creemCustomerId?: string
+): Promise<UserSubscription> => {
+  try {
+    console.log('创建用户订阅:', { userId, plan, creemSubscriptionId });
+    
+    const subscription: Partial<UserSubscription> = {
+      user_id: userId,
+      plan,
+      creem_subscription_id: creemSubscriptionId,
+      creem_customer_id: creemCustomerId,
+      status: 'active',
+      current_period_start: new Date().toISOString(),
+      current_period_end: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(), // 30 days
+    };
+
+    const { data, error } = await supabase
+      .from('user_subscriptions')
+      .insert([subscription])
       .select()
       .single();
 
     if (error) {
-      if (error.code === 'PGRST116') { // PostgREST error for no rows found
-        throw new Error('IP形象不存在或用户无权修改');
-      }
-      console.error('更新IP名称失败:', error);
-      throw new Error(`更新IP名称失败: ${error.message}`);
+      throw new Error(`创建订阅失败: ${error.message}`);
     }
 
-    console.log(`成功更新IP名称`);
+    // Create initial quota for the user
+    await createUserQuota(userId, data.id, plan);
+
+    console.log('订阅创建成功:', data);
     return data;
-  } catch (err) {
-    console.error('updateUserIPCharacterName 捕获错误:', err);
-    if (err instanceof Error) {
-      throw err;
+  } catch (error) {
+    console.error('createUserSubscription 错误:', error);
+    throw error instanceof Error ? error : new Error('创建订阅失败');
+  }
+};
+
+// Get user subscription
+export const getUserSubscription = async (userId: string): Promise<UserSubscription | null> => {
+  try {
+    console.log(`正在获取用户 ${userId} 的订阅信息`);
+    
+    const { data, error } = await supabase
+      .from('user_subscriptions')
+      .select('*')
+      .eq('user_id', userId)
+      .eq('status', 'active')
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .single();
+
+    if (error) {
+      if (error.code === 'PGRST116') {
+        console.log('用户无活跃订阅');
+        return null;
+      }
+      throw new Error(`获取订阅失败: ${error.message}`);
     }
-    throw new Error(`更新IP名称失败: ${String(err)}`);
+
+    console.log('获取订阅成功:', data);
+    return data;
+  } catch (error) {
+    console.error('getUserSubscription 错误:', error);
+    return null;
+  }
+};
+
+// Update user subscription
+export const updateUserSubscription = async (
+  subscriptionId: string,
+  updates: Partial<UserSubscription>
+): Promise<UserSubscription> => {
+  try {
+    const { data, error } = await supabase
+      .from('user_subscriptions')
+      .update({
+        ...updates,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', subscriptionId)
+      .select()
+      .single();
+
+    if (error) {
+      throw new Error(`更新订阅失败: ${error.message}`);
+    }
+
+    return data;
+  } catch (error) {
+    console.error('updateUserSubscription 错误:', error);
+    throw error instanceof Error ? error : new Error('更新订阅失败');
+  }
+};
+
+// Create user quota
+export const createUserQuota = async (
+  userId: string,
+  subscriptionId: string,
+  plan: SubscriptionPlan
+): Promise<UsageQuota> => {
+  try {
+    console.log('创建用户配额:', { userId, subscriptionId, plan });
+
+    // Set limits based on plan
+    let limits = {
+      ip_characters_limit: 2,
+      merchandise_daily_limit: 2,
+      merchandise_monthly_limit: 2,
+      models_monthly_limit: 1,
+    };
+
+    if (plan === 'personal') {
+      limits = {
+        ip_characters_limit: 10,
+        merchandise_daily_limit: 100, // No daily limit for paid plans
+        merchandise_monthly_limit: 100,
+        models_monthly_limit: 10,
+      };
+    } else if (plan === 'team') {
+      limits = {
+        ip_characters_limit: 100,
+        merchandise_daily_limit: 1000, // No daily limit for paid plans
+        merchandise_monthly_limit: 1000,
+        models_monthly_limit: 50,
+      };
+    }
+
+    const quota: Partial<UsageQuota> = {
+      user_id: userId,
+      subscription_id: subscriptionId,
+      ip_characters_used: 0,
+      merchandise_daily_used: 0,
+      merchandise_monthly_used: 0,
+      models_monthly_used: 0,
+      ...limits,
+      period_start: new Date().toISOString(),
+      period_end: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+      daily_reset_date: new Date().toISOString().split('T')[0],
+    };
+
+    const { data, error } = await supabase
+      .from('user_quotas')
+      .insert([quota])
+      .select()
+      .single();
+
+    if (error) {
+      throw new Error(`创建配额失败: ${error.message}`);
+    }
+
+    console.log('配额创建成功:', data);
+    return data;
+  } catch (error) {
+    console.error('createUserQuota 错误:', error);
+    throw error instanceof Error ? error : new Error('创建配额失败');
+  }
+};
+
+// Get user quota
+export const getUserQuota = async (userId: string): Promise<UsageQuota | null> => {
+  try {
+    console.log(`正在获取用户 ${userId} 的配额信息`);
+    
+    const { data, error } = await supabase
+      .from('user_quotas')
+      .select('*')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .single();
+
+    if (error) {
+      if (error.code === 'PGRST116') {
+        console.log('用户无配额记录，创建默认免费配额');
+        // Create default free quota
+        const subscription = await createUserSubscription(userId, 'free');
+        return await getUserQuota(userId);
+      }
+      throw new Error(`获取配额失败: ${error.message}`);
+    }
+
+    console.log('获取配额成功:', data);
+    return data;
+  } catch (error) {
+    console.error('getUserQuota 错误:', error);
+    return null;
+  }
+};
+
+// Update user quota
+export const updateUserQuota = async (
+  quotaId: string,
+  updates: Partial<UsageQuota>
+): Promise<UsageQuota> => {
+  try {
+    const { data, error } = await supabase
+      .from('user_quotas')
+      .update({
+        ...updates,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', quotaId)
+      .select()
+      .single();
+
+    if (error) {
+      throw new Error(`更新配额失败: ${error.message}`);
+    }
+
+    return data;
+  } catch (error) {
+    console.error('updateUserQuota 错误:', error);
+    throw error instanceof Error ? error : new Error('更新配额失败');
+  }
+};
+
+// Reset daily quota if needed
+const resetDailyQuotaIfNeeded = async (quota: UsageQuota): Promise<UsageQuota> => {
+  const today = new Date().toISOString().split('T')[0];
+  const quotaDate = new Date(quota.daily_reset_date).toISOString().split('T')[0];
+  
+  if (today !== quotaDate) {
+    console.log('重置每日配额');
+    const updatedQuota = await updateUserQuota(quota.id, {
+      merchandise_daily_used: 0,
+      daily_reset_date: today,
+    });
+    return updatedQuota;
+  }
+  
+  return quota;
+};
+
+// Check if user can perform action
+export const checkUserQuota = async (
+  userId: string,
+  action: 'ip_character' | 'merchandise' | 'model'
+): Promise<{ canProceed: boolean; quota?: UsageQuota; message?: string }> => {
+  try {
+    let quota = await getUserQuota(userId);
+    if (!quota) {
+      return { canProceed: false, message: '无法获取用户配额信息' };
+    }
+
+    // Reset daily quota if needed
+    quota = await resetDailyQuotaIfNeeded(quota);
+
+    let canProceed = false;
+    let message = '';
+
+    switch (action) {
+      case 'ip_character':
+        canProceed = quota.ip_characters_used < quota.ip_characters_limit;
+        message = canProceed ? '' : `IP角色生成已达上限 (${quota.ip_characters_limit})`;
+        break;
+      case 'merchandise':
+        // Check both daily and monthly limits for free users
+        const subscription = await getUserSubscription(userId);
+        const isFreeUser = !subscription || subscription.plan === 'free';
+        
+        if (isFreeUser) {
+          const dailyLimitReached = quota.merchandise_daily_used >= quota.merchandise_daily_limit;
+          canProceed = !dailyLimitReached;
+          message = canProceed ? '' : `今日周边生成已达上限 (${quota.merchandise_daily_limit})`;
+        } else {
+          canProceed = quota.merchandise_monthly_used < quota.merchandise_monthly_limit;
+          message = canProceed ? '' : `本月周边生成已达上限 (${quota.merchandise_monthly_limit})`;
+        }
+        break;
+      case 'model':
+        canProceed = quota.models_monthly_used < quota.models_monthly_limit;
+        message = canProceed ? '' : `本月3D模型生成已达上限 (${quota.models_monthly_limit})`;
+        break;
+    }
+
+    return { canProceed, quota, message };
+  } catch (error) {
+    console.error('checkUserQuota 错误:', error);
+    return { canProceed: false, message: '检查配额时发生错误' };
+  }
+};
+
+// Increment usage quota
+export const incrementUserQuota = async (
+  userId: string,
+  action: 'ip_character' | 'merchandise' | 'model'
+): Promise<void> => {
+  try {
+    let quota = await getUserQuota(userId);
+    if (!quota) {
+      throw new Error('无法获取用户配额信息');
+    }
+
+    // Reset daily quota if needed
+    quota = await resetDailyQuotaIfNeeded(quota);
+
+    const updates: Partial<UsageQuota> = {};
+    
+    switch (action) {
+      case 'ip_character':
+        updates.ip_characters_used = quota.ip_characters_used + 1;
+        break;
+      case 'merchandise':
+        // Increment both daily and monthly for free users, only monthly for paid users
+        const subscription = await getUserSubscription(userId);
+        const isFreeUser = !subscription || subscription.plan === 'free';
+        
+        if (isFreeUser) {
+          updates.merchandise_daily_used = quota.merchandise_daily_used + 1;
+        }
+        updates.merchandise_monthly_used = quota.merchandise_monthly_used + 1;
+        break;
+      case 'model':
+        updates.models_monthly_used = quota.models_monthly_used + 1;
+        break;
+    }
+
+    await updateUserQuota(quota.id, updates);
+    console.log(`用户 ${userId} 的 ${action} 配额已递增`);
+  } catch (error) {
+    console.error('incrementUserQuota 错误:', error);
+    throw error instanceof Error ? error : new Error('更新配额使用量失败');
+  }
+};
+
+// Initialize free user quota for new users
+export const initializeFreeUserQuota = async (userId: string): Promise<void> => {
+  try {
+    console.log(`为新用户 ${userId} 初始化免费配额`);
+    
+    // Check if user already has a subscription
+    const existingSubscription = await getUserSubscription(userId);
+    if (existingSubscription) {
+      console.log('用户已有订阅，跳过初始化');
+      return;
+    }
+
+    // Create free subscription
+    const subscription = await createUserSubscription(userId, 'free');
+    console.log(`用户 ${userId} 的免费配额初始化完成`);
+  } catch (error) {
+    console.error('initializeFreeUserQuota 错误:', error);
+    // Don't throw error to avoid blocking user registration
   }
 };

@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import { Button } from "./ui/button";
-import { registerUser, loginUser, logoutUser, getCurrentUser, type AuthUser } from "../lib/supabase";
+import { supabase } from "../lib/supabase";
+import type { AuthUser } from "../lib/supabase";
 
 interface AuthModalProps {
   isOpen: boolean;
@@ -11,61 +12,41 @@ interface AuthModalProps {
 }
 
 export default function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps) {
-  const [mode, setMode] = useState<'login' | 'register'>('login');
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
-  const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleGoogleLogin = async () => {
     setLoading(true);
     setError('');
 
     try {
-      let user: AuthUser;
+      console.log('正在启动Google登录...');
       
-      if (mode === 'register') {
-        console.log('正在注册用户...', { username, email: email || '未提供' });
-        user = await registerUser(username, password, email || undefined);
-        console.log('注册成功:', { userId: user.id, username: user.username });
-      } else {
-        console.log('正在登录...', { username });
-        user = await loginUser(username, password);
-        console.log('登录成功:', { userId: user.id, username: user.username });
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: `${window.location.origin}/auth/callback`
+        }
+      });
+
+      if (error) {
+        throw error;
       }
 
-      // 调用成功回调
-      onSuccess(user);
+      // OAuth 登录会重定向，所以这里不需要额外处理
+      console.log('Google登录已启动');
       
-      // 延迟关闭对话框，让用户看到成功状态
-      setTimeout(() => {
-        onClose();
-      }, 500);
+    } catch (err: any) {
+      console.error('Google登录错误:', err);
       
-      // Reset form
-      setUsername('');
-      setPassword('');
-      setEmail('');
-    } catch (err) {
-      console.error('认证错误:', err);
-      
-      // 根据错误类型提供更友好的错误信息
-      if (err instanceof Error) {
-        if (err.message.includes('用户不存在')) {
-          setError('用户名不存在，请检查输入或注册新账号');
-        } else if (err.message.includes('密码错误')) {
-          setError('密码不正确，请重新输入');
-        } else if (err.message.includes('用户名已存在')) {
-          setError('用户名已存在，请选择其他用户名或直接登录');
-        } else if (err.message.includes('网络')) {
-          setError('网络连接失败，请检查网络后重试');
+      if (err?.message) {
+        if (err.message.includes('rate limit exceeded')) {
+          setError('操作过于频繁，请稍后再试');
         } else {
-          setError(err.message);
+          setError(`登录失败: ${err.message}`);
         }
       } else {
-        setError(mode === 'register' ? '注册失败，请重试' : '登录失败，请重试');
+        setError('Google登录失败，请重试');
       }
     } finally {
       setLoading(false);
@@ -77,9 +58,9 @@ export default function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
       <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4">
-        <div className="flex justify-between items-center mb-4">
+        <div className="flex justify-between items-center mb-6">
           <h2 className="text-xl font-semibold">
-            {mode === 'login' ? '登录' : '注册'}
+            登录账户
           </h2>
           <button
             onClick={onClose}
@@ -89,76 +70,43 @@ export default function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label htmlFor="username" className="block text-sm font-medium text-gray-700 mb-1">
-              用户名
-            </label>
-            <input
-              id="username"
-              type="text"
-              required
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              placeholder="请输入用户名"
-            />
-          </div>
-
-          {mode === 'register' && (
-            <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
-                邮箱 (可选)
-              </label>
-              <input
-                id="email"
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                placeholder="请输入邮箱"
-              />
-            </div>
-          )}
-
-          <div>
-            <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
-              密码
-            </label>
-            <input
-              id="password"
-              type="password"
-              required
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              placeholder="请输入密码"
-            />
+        <div className="space-y-4">
+          <div className="text-center text-gray-600 text-sm mb-4">
+            使用您的 Google 账户快速登录
           </div>
 
           {error && (
-            <div className="text-red-600 text-sm">{error}</div>
+            <div className="text-red-600 text-sm text-center bg-red-50 p-3 rounded-md">
+              {error}
+            </div>
           )}
 
           <Button
-            type="submit"
+            onClick={handleGoogleLogin}
             disabled={loading}
-            className="w-full"
+            className="w-full h-12 bg-white hover:bg-gray-50 text-gray-700 border border-gray-300 flex items-center justify-center gap-3"
           >
-            {loading ? '处理中...' : (mode === 'login' ? '登录' : '注册')}
+            {loading ? (
+              <div className="flex items-center gap-2">
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-500"></div>
+                <span>正在登录...</span>
+              </div>
+            ) : (
+              <>
+                <svg className="w-5 h-5" viewBox="0 0 24 24">
+                  <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                  <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                  <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+                  <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+                </svg>
+                <span>使用 Google 账户登录</span>
+              </>
+            )}
           </Button>
-        </form>
 
-        <div className="mt-4 text-center">
-          <button
-            onClick={() => {
-              setMode(mode === 'login' ? 'register' : 'login');
-              setError('');
-            }}
-            className="text-blue-600 hover:text-blue-800 text-sm"
-          >
-            {mode === 'login' ? '没有账号？点击注册' : '已有账号？点击登录'}
-          </button>
+          <div className="text-center text-xs text-gray-500 mt-4">
+            登录即表示您同意我们的服务条款和隐私政策
+          </div>
         </div>
       </div>
     </div>

@@ -1,0 +1,121 @@
+# Popverse.ai - AI驱动的IP角色生成平台 Cursor 开发规则
+
+## 🎯 项目概述
+这是一个基于AI的IP角色生成平台，用户可以上传图片生成专属IP形象，并批量生成周边商品（手机壳、钥匙扣、3D手办等）。
+
+## 💻 技术栈与架构
+- **前端**: Next.js 15 (App Router) + TypeScript + Tailwind CSS
+- **数据库**: Supabase (PostgreSQL + Auth + Storage)
+- **AI服务**: Sparrow API (图片生成) + Tripo3D API (3D模型)
+- **认证**: 本地localStorage系统（已替换Supabase Auth）
+- **部署**: 开发环境运行在 localhost:3002
+
+## 📁 核心目录结构
+```
+cleanup-pictures-clone/
+├── src/
+│   ├── app/                 # Next.js App Router页面
+│   ├── components/          # React组件
+│   │   ├── ui/             # 基础UI组件
+│   │   ├── Header.tsx      # 导航栏
+│   │   ├── HeroSection.tsx # 主要上传生成区域
+│   │   └── AuthModal.tsx   # 登录注册弹窗
+│   ├── lib/                # 核心业务逻辑
+│   │   ├── ai-api.ts       # AI API调用封装
+│   │   ├── supabase.ts     # 数据库操作（现为localStorage）
+│   │   └── auth-utils.ts   # 认证工具
+│   └── contexts/           # React Context
+└── public/examples/        # 示例图片资源
+```
+
+## 🔧 开发规范
+
+### 代码风格
+- **语言**: 所有注释、变量名、函数名使用中文描述或中英混合
+- **组件**: 使用PascalCase命名，文件名与组件名一致
+- **函数**: 使用camelCase，函数名要体现具体功能
+- **常量**: 使用UPPER_CASE，配置相关的要集中管理
+- **类型**: TypeScript接口使用PascalCase，要有详细的属性注释
+
+### 组件开发规则
+1. **响应式优先**: 所有组件必须适配移动端，使用Tailwind响应式类
+2. **错误处理**: 每个API调用都要有try-catch和用户友好的错误提示
+3. **加载状态**: 异步操作要有loading状态，使用Lucide图标
+4. **日志记录**: 关键操作要有详细的console.log，便于调试
+5. **用户体验**: 操作后要有即时反馈，成功/失败都要明确提示
+
+### API集成规范
+- **AI图片生成**: 使用`generateIPCharacter`函数，支持演示模式回退
+- **本地认证**: 使用localStorage存储用户数据，避免Supabase Auth的邮箱限制问题
+- **数据持久化**: IP形象数据存储在localStorage，键名规范化
+- **错误恢复**: API失败时要有graceful degradation机制
+
+### 特定组件规则
+
+#### HeroSection.tsx（主要生成界面）
+- 确保上传区域点击事件正常工作
+- 示例图片点击要能正确加载到上传区域
+- 生成按钮状态要准确反映当前操作
+- 错误信息要用户友好，避免技术术语
+
+#### AuthModal.tsx（认证弹窗）
+- 使用本地localStorage认证系统
+- 注册成功后自动登录
+- 提供调试按钮方便排查问题
+- 表单验证要即时反馈
+
+#### Header.tsx（导航栏）
+- 用户登录状态要准确显示
+- 用户菜单交互要流畅
+- 移动端适配要完整
+
+### 数据管理规则
+- **用户数据**: 存储在`localStorage['local_users']`
+- **当前用户**: 存储在`localStorage['current_user']`
+- **IP形象**: 存储在`localStorage['user_ip_characters']`
+- **数据格式**: 统一使用JSON格式，要有类型接口定义
+
+### 错误处理与调试
+1. **控制台日志**: 使用统一的日志格式，包含时间戳和操作上下文
+2. **错误边界**: 在组件层面处理错误，避免整个应用崩溃
+3. **调试工具**: 保留调试按钮和状态检查功能
+4. **故障排除**: 提供清空本地数据的重置功能
+
+### UI/UX指导原则
+- **品牌色**: 使用`cleanup-green`主题色
+- **图标**: 统一使用Lucide React图标库
+- **动画**: 使用Tailwind transition类，保持一致的过渡效果
+- **间距**: 遵循8px网格系统，使用Tailwind spacing类
+- **字体**: 使用默认系统字体栈，确保跨平台一致性
+
+### 性能优化
+- 图片懒加载使用Next.js Image组件
+- 大文件上传要有进度提示
+- 避免不必要的重渲染，使用React.memo
+- localStorage操作要有异常处理
+
+### 安全考虑
+- 用户输入要进行适当的验证和清理
+- API密钥等敏感信息使用环境变量
+- 避免在控制台输出敏感用户数据
+- 本地存储的密码要考虑基本的安全措施
+
+## 🚀 开发流程
+1. **启动开发服务器**: `cd cleanup-pictures-clone && npm run dev`
+2. **调试**: 使用浏览器开发者工具和应用内调试功能
+3. **测试**: 重点测试上传、生成、认证流程
+4. **代码提交**: 遵循conventional commits规范
+
+## ⚠️ 已知问题与限制
+
+- 大文件上传可能较慢，需要适当的用户提示
+- 移动端性能需要持续优化
+
+## 🎨 设计系统
+- **主色调**: Green (#10B981 - cleanup-green)
+- **辅助色**: Gray系列用于文本和背景
+- **圆角**: 统一使用rounded-lg/xl/2xl
+- **阴影**: 使用shadow-sm/md/lg/xl层次
+- **字体大小**: text-sm/base/lg/xl/2xl递进
+
+遵循以上规则能确保代码质量、用户体验和项目的可维护性。 

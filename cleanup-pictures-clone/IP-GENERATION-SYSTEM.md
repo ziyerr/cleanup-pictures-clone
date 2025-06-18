@@ -174,16 +174,16 @@ Tripo3D API集成：
 需要配置以下环境变量：
 
 ```env
-# Supabase配置
-NEXT_PUBLIC_SUPABASE_URL=你的supabase项目URL
-NEXT_PUBLIC_SUPABASE_ANON_KEY=你的supabase匿名密钥
+    # Supabase 配置
+    NEXT_PUBLIC_SUPABASE_URL=https://wrfvysakckcmvquvwuei.supabase.co
+    NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndyZnZ5c2FrY2tjbXZxdXZ3dWVpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDk0MDEzMDEsImV4cCI6MjA2NDk3NzMwMX0.LgQHwS9rbcmTfL2SegtcDByDTxWqraKMcXRQBPMtYJw
 
-# Tripo3D API配置
-TRIPO3D_API_KEY=tsk_BSWrPgLgNGn1dUVsw7yJflHwmCHHY6ISUhRbYHNvIxq
+    # Sparrow AI服务配置 (图生图)
+    NEXT_PUBLIC_SPARROW_API_KEY=sk-TFpWwowemj3EvpydtjwuIolhiuEgG8WW1LugZs3HHF4eb4z9
+    NEXT_PUBLIC_SPARROW_BASE_URL=https://ismaque.org/v1
 
-# 麻雀API配置 
-MAIQUE_API_KEY=sk-1eEdZF3JuFocE3eyrFBnmE1IgMFwbGcwPfMciRMdxF1Zl8Ke
-MAIQUE_API_BASE_URL=https://api.apicore.ai
+    # Tripo3D API配置 (图生3D)
+    TRIPO3D_API_KEY=tcli_e5aefcdde2314dacaf90390b4c38d2b4
 ```
 
 ## 安装和运行

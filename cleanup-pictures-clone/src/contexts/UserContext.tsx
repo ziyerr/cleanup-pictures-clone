@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useState, useEffect, type ReactNode } from 'react';
 import type { AuthUser } from '../lib/supabase';
-import { supabase, getCurrentUser } from '../lib/supabase';
+import { supabase } from '../lib/supabase';
 import type { Session } from '@supabase/supabase-js';
 
 interface UserContextType {
@@ -29,8 +29,14 @@ export function UserProvider({ children }: { children: ReactNode }) {
       setIsLoading(true);
       
       try {
-        // 获取当前session
+        console.log('UserContext: 开始初始化认证');
+        const startTime = Date.now();
+        
+        // 从Supabase session获取
         const { data: { session }, error } = await supabase.auth.getSession();
+        const fetchTime = Date.now() - startTime;
+        
+        console.log(`UserContext: getSession耗时 ${fetchTime}ms`);
         
         if (error) {
           console.error('获取session失败:', error);
@@ -46,7 +52,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
           const authUser: AuthUser = {
             id: session.user.id,
             email: session.user.email,
-            username: session.user.user_metadata?.username || session.user.email?.split('@')[0],
+            username: session.user.user_metadata?.username || session.user.email?.split('@')[0] || '',
             user_metadata: session.user.user_metadata,
             created_at: session.user.created_at || new Date().toISOString(),
           };
@@ -55,7 +61,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
           console.log('从session恢复用户:', { userId: authUser.id, username: authUser.username });
         } else {
           setCurrentUser(null);
-          console.log('无有效session，用户未登录');
+          console.log('无有效用户，用户未登录');
         }
       } catch (error) {
         console.error('初始化认证失败:', error);
@@ -63,10 +69,19 @@ export function UserProvider({ children }: { children: ReactNode }) {
         setCurrentUser(null);
       } finally {
         setIsLoading(false);
+        console.log('UserContext: 认证初始化完成');
       }
     };
 
-    initializeAuth();
+    // 添加超时机制
+    const timeoutId = setTimeout(() => {
+      console.warn('UserContext: 认证初始化超时，强制设置为未加载状态');
+      setIsLoading(false);
+    }, 10000); // 10秒超时
+
+    initializeAuth().finally(() => {
+      clearTimeout(timeoutId);
+    });
 
     // 监听认证状态变化
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
@@ -78,7 +93,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
         const authUser: AuthUser = {
           id: session.user.id,
           email: session.user.email,
-          username: session.user.user_metadata?.username || session.user.email?.split('@')[0],
+          username: session.user.user_metadata?.username || session.user.email?.split('@')[0] || '',
           user_metadata: session.user.user_metadata,
           created_at: session.user.created_at || new Date().toISOString(),
         };
@@ -102,16 +117,20 @@ export function UserProvider({ children }: { children: ReactNode }) {
 
   const logout = async () => {
     try {
+      // 清除Supabase session
       const { error } = await supabase.auth.signOut();
       if (error) {
         console.error('登出错误:', error);
       } else {
         console.log('用户已登出');
       }
+      
+      // 用户状态会通过onAuthStateChange自动清除
     } catch (error) {
       console.error('登出过程出错:', error);
+      // 即使出错也要清除状态
+      setCurrentUser(null);
     }
-    // session和currentUser会通过onAuthStateChange自动清除
   };
 
   return (

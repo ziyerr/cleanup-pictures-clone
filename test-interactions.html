@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>交互功能测试 - Popverse.ai</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            line-height: 1.6;
+        }
+        .test-item {
+            background: #f5f5f5;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 8px;
+            border-left: 4px solid #4CAF50;
+        }
+        .status {
+            display: inline-block;
+            padding: 3px 8px;
+            border-radius: 12px;
+            font-size: 12px;
+            margin-left: 10px;
+        }
+        .status.pass { background: #d4edda; color: #155724; }
+        .status.fail { background: #f8d7da; color: #721c24; }
+        .status.unknown { background: #e2e3e5; color: #383d41; }
+        iframe {
+            width: 100%;
+            height: 600px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+        .console-output {
+            background: #000;
+            color: #0f0;
+            padding: 10px;
+            border-radius: 5px;
+            font-family: monospace;
+            font-size: 12px;
+            height: 200px;
+            overflow-y: auto;
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <h1>🧪 Popverse.ai 交互功能测试</h1>
+    
+    <div class="test-item">
+        <h3>✅ 修复状态总结</h3>
+        <ul>
+            <li><strong>编译错误修复</strong> <span class="status pass">✓ 已修复</span><br>
+                移除了重复的character变量声明，简化了Supabase相关代码
+            </li>
+            <li><strong>本地认证系统</strong> <span class="status pass">✓ 已实现</span><br>
+                替换了Supabase认证为localStorage本地认证系统
+            </li>
+            <li><strong>响应式UI</strong> <span class="status pass">✓ 已修复</span><br>
+                修复了小屏幕下按钮显示问题
+            </li>
+        </ul>
+    </div>
+
+    <div class="test-item">
+        <h3>🔍 需要测试的功能</h3>
+        <ol>
+            <li><strong>右上角用户按钮</strong> - 点击应该显示登录弹窗</li>
+            <li><strong>上传图片区域</strong> - 点击应该打开文件选择器</li>
+            <li><strong>示例图片</strong> - 点击应该加载示例图片</li>
+            <li><strong>拖拽上传</strong> - 拖拽图片到上传区域应该工作</li>
+            <li><strong>用户注册登录</strong> - 注册和登录功能应该正常工作</li>
+        </ol>
+    </div>
+
+    <h2>📱 应用预览 (localhost:3000)</h2>
+    <iframe src="http://localhost:3000" title="Popverse.ai 应用预览"></iframe>
+
+    <div class="test-item">
+        <h3>🛠️ 手动测试步骤</h3>
+        <ol>
+            <li>点击右上角用户图标 → 应该打开登录弹窗</li>
+            <li>注册一个新用户 → 应该成功注册并自动登录</li>
+            <li>点击"点击或拖拽上传图片"区域 → 应该打开文件选择器</li>
+            <li>点击页面下方的示例图片 → 应该加载示例图片到上传区域</li>
+            <li>拖拽一张图片到上传区域 → 应该显示图片预览</li>
+        </ol>
+    </div>
+
+    <div class="test-item">
+        <h3>🐛 如果遇到问题</h3>
+        <p>请按F12打开开发者工具，查看Console选项卡中的错误信息，并检查：</p>
+        <ul>
+            <li>是否有JavaScript错误</li>
+            <li>是否有网络请求失败</li>
+            <li>是否有元素选择器错误</li>
+            <li>localStorage是否正常工作</li>
+        </ul>
+    </div>
+
+    <div class="console-output" id="console">
+        <div>等待测试结果...</div>
+    </div>
+
+    <script>
+        // 简单的控制台输出捕获
+        const consoleDiv = document.getElementById('console');
+        const originalLog = console.log;
+        const originalError = console.error;
+        
+        function addToConsole(message, type = 'log') {
+            const timestamp = new Date().toLocaleTimeString();
+            const div = document.createElement('div');
+            div.textContent = `[${timestamp}] ${type.toUpperCase()}: ${message}`;
+            if (type === 'error') div.style.color = '#ff6b6b';
+            if (type === 'warn') div.style.color = '#feca57';
+            consoleDiv.appendChild(div);
+            consoleDiv.scrollTop = consoleDiv.scrollHeight;
+        }
+        
+        console.log = function(...args) {
+            originalLog.apply(console, args);
+            addToConsole(args.join(' '), 'log');
+        };
+        
+        console.error = function(...args) {
+            originalError.apply(console, args);
+            addToConsole(args.join(' '), 'error');
+        };
+        
+        // 监听iframe消息
+        window.addEventListener('message', function(event) {
+            if (event.origin === 'http://localhost:3000') {
+                addToConsole(`来自应用的消息: ${JSON.stringify(event.data)}`, 'info');
+            }
+        });
+        
+        addToConsole('测试页面已加载完成');
+        addToConsole('请开始手动测试上述功能');
+    </script>
+</body>
+</html> 

@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import WelcomeToast from "../components/WelcomeToast";
+import GlobalTaskButton from "../components/GlobalTaskButton";
 
 export default function ClientBody({
   children,
@@ -18,6 +19,7 @@ export default function ClientBody({
     <div className="antialiased">
       {children}
       <WelcomeToast />
+      <GlobalTaskButton />
     </div>
   );
 }

@@ -2,9 +2,10 @@
 
 import { useState, useEffect } from 'react';
 import { Loader2, CheckCircle, AlertCircle, Download, Eye, RotateCcw, X } from 'lucide-react';
-import { type GenerationTask } from '../lib/supabase';
+import type { GenerationTask } from '../lib/supabase';
 import { useUser } from '../contexts/UserContext';
 import AuthModal from './AuthModal';
+import MerchandiseSelectionModal from './MerchandiseSelectionModal';
 
 interface MerchandiseGenerationModalProps {
   isOpen: boolean;
@@ -24,7 +25,7 @@ interface TaskProgress {
   error?: string;
 }
 
-export default function MerchandiseGenerationModal({ 
+export default function MerchandiseGenerationModal({
   isOpen,
   onClose,
   characterId,
@@ -34,6 +35,7 @@ export default function MerchandiseGenerationModal({
 }: MerchandiseGenerationModalProps) {
   const { currentUser, setCurrentUser } = useUser();
   const [showAuthModal, setShowAuthModal] = useState(false);
+  const [showSelectionModal, setShowSelectionModal] = useState(false);
   const [tasks, setTasks] = useState<TaskProgress[]>([]);
   const [isGenerating, setIsGenerating] = useState(false);
   const [batchId, setBatchId] = useState<string | null>(null);
@@ -109,78 +111,90 @@ export default function MerchandiseGenerationModal({
     return () => clearInterval(pollInterval);
   }, [batchId, isGenerating, currentUser]);
 
-  // 处理立即生成按钮
+  // 处理立即生成按钮 - 改为显示选择模态框
   const handleGenerateClick = () => {
     if (!currentUser) {
       setShowAuthModal(true);
       return;
     }
-    startGeneration();
+    setShowSelectionModal(true);
   };
 
-  // 开始生成流程 - 添加防重复提交机制
-  const startGeneration = async () => {
-    if (!currentUser || isGenerating) return; // 防止重复点击
-    
+  // 处理选择性生成
+  const handleSelectedGeneration = async (selectedItems: string[]) => {
+    if (!currentUser || isGenerating) return;
+
     setIsGenerating(true);
-    
+    setShowSelectionModal(false);
+
     try {
-      console.log('开始生成商品，角色ID:', characterId);
-      
-      const response = await fetch(`/api/ip/${characterId}/generate-batch`, {
+      console.log('开始生成选中的商品，角色ID:', characterId, '选中项目:', selectedItems);
+
+      // Get the current session token for authentication
+      const { data: { session } } = await (await import('../lib/supabase')).supabase.auth.getSession();
+      const authToken = session?.access_token;
+
+      if (!authToken) {
+        throw new Error('认证token不存在，请重新登录');
+      }
+
+      const response = await fetch(`/api/ip/${characterId}/generate-selected`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'x-user-id': currentUser.id
-        }
+          'x-user-id': currentUser.id,
+          'Authorization': `Bearer ${authToken}`,
+        },
+        body: JSON.stringify({ selectedItems })
       });
-      
+
       console.log('API响应状态:', response.status);
-      
+
       if (!response.ok) {
         const errorData = await response.json();
         console.error('API错误响应:', errorData);
-        
-        // 特殊处理数据库超时错误
-        if (errorData.error?.includes('timeout') || errorData.error?.includes('statement timeout')) {
-          throw new Error('数据库正忙，请稍后再试。可能需要清理积压的任务。');
-        }
-        
-        // 特殊处理约束错误
-        if (errorData.error?.includes('check constraint')) {
-          throw new Error('数据库约束错误，请联系管理员执行数据库修复脚本。');
-        }
-        
         throw new Error(errorData.error || '启动生成失败');
       }
-      
+
       const result = await response.json();
-      console.log('生成启动成功:', result);
+      console.log('选择性生成启动成功:', result);
       setBatchId(result.batchId);
-      
-      // 使用API返回的任务ID更新本地任务
-      setTasks(prev => prev.map(task => {
-        const taskId = result.taskIds[task.type] || result.taskIds[task.type.replace('multi_view_', '').replace('merchandise_', '')];
-        if (taskId) {
-          return { ...task, id: taskId, status: 'processing' };
-        }
-        return task;
-      }));
-      
+
+      // 根据选中的商品类型初始化任务列表
+      const selectedTasks = selectedItems.map(itemType => {
+        const taskNames: Record<string, string> = {
+          'keychain': '钥匙扣设计',
+          'fridge_magnet': '冰箱贴设计',
+          'handbag': '手提袋设计',
+          'phone_case': '手机壳设计'
+        };
+
+        return {
+          id: result.taskIds[itemType] || '',
+          type: `merchandise_${itemType}`,
+          name: taskNames[itemType] || itemType,
+          status: 'processing' as const
+        };
+      });
+
+      setTasks(selectedTasks);
+
+      // 显示成功消息
+      alert(`✅ 成功启动 ${result.createdCount} 个商品生成任务！\n\n任务将在后台执行，您可以在任务列表页面查看进度。`);
+
+      // 3秒后自动关闭模态框，让用户去任务列表查看进度
+      setTimeout(() => {
+        setIsGenerating(false);
+        onClose();
+      }, 3000);
+
     } catch (error) {
-      console.error('启动生成失败:', error);
+      console.error('启动选择性生成失败:', error);
       setIsGenerating(false);
-      
-      // 更好的错误提示
+      setShowSelectionModal(true); // 重新显示选择模态框
+
       const errorMessage = error instanceof Error ? error.message : '未知错误';
-      
-      if (errorMessage.includes('timeout')) {
-        alert(`⏰ 数据库繁忙，请稍后重试。\n\n建议：等待1-2分钟后再次尝试。`);
-      } else if (errorMessage.includes('constraint')) {
-        alert(`🔧 数据库配置问题。\n\n请执行数据库修复脚本：URGENT-DATABASE-FIX.sql`);
-      } else {
-        alert(`❌ 启动生成失败: ${errorMessage}`);
-      }
+      alert(`❌ 启动生成失败: ${errorMessage}`);
     }
   };
 
@@ -188,8 +202,8 @@ export default function MerchandiseGenerationModal({
   const handleAuthSuccess = (user: any) => {
     setCurrentUser(user);
     setShowAuthModal(false);
-    // 自动开始生成
-    setTimeout(() => startGeneration(), 500);
+    // 显示选择模态框
+    setTimeout(() => setShowSelectionModal(true), 500);
   };
 
   // 获取状态图标
@@ -306,12 +320,12 @@ export default function MerchandiseGenerationModal({
                   onClick={handleGenerateClick}
                   disabled={isGenerating}
                   className={`px-8 py-3 font-bold rounded-xl transition-colors ${
-                    isGenerating 
-                      ? 'bg-gray-300 text-gray-500 cursor-not-allowed' 
+                    isGenerating
+                      ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
                       : 'bg-cleanup-green text-black hover:bg-green-400'
                   }`}
                 >
-                  {isGenerating ? '生成中...' : '立即生成'}
+                  {isGenerating ? '生成中...' : '选择商品'}
                 </button>
                 {!currentUser && (
                   <p className="text-sm text-gray-500 mt-2">
@@ -430,6 +444,16 @@ export default function MerchandiseGenerationModal({
         isOpen={showAuthModal}
         onClose={() => setShowAuthModal(false)}
         onSuccess={handleAuthSuccess}
+      />
+
+      {/* Merchandise Selection Modal */}
+      <MerchandiseSelectionModal
+        isOpen={showSelectionModal}
+        onClose={() => setShowSelectionModal(false)}
+        characterId={characterId}
+        characterName={characterName}
+        characterImageUrl={characterImageUrl}
+        onStartGeneration={handleSelectedGeneration}
       />
     </>
   );

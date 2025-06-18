@@ -1,0 +1,716 @@
+'use client';
+
+import { useState, useCallback } from 'react';
+import { Button } from './ui/button';
+import { Upload, ArrowDown, Wand2, X, Loader2, CheckCircle, AlertCircle, Sparkles } from 'lucide-react';
+import { generateIPCharacter, validateImageFile } from '../lib/ai-api';
+import AuthModal from './AuthModal';
+import ServiceStatusBanner from './ServiceStatusBanner';
+import { saveUserIPCharacter, type AuthUser } from '../lib/supabase';
+import { useUser } from '../contexts/UserContext';
+import { useRouter } from 'next/navigation';
+
+export default function HeroSection() {
+  const [isDragOver, setIsDragOver] = useState(false);
+  const [uploadedImage, setUploadedImage] = useState<{id: string, url: string, file?: File} | null>(null);
+  const [styleDescription, setStyleDescription] = useState('');
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [generatedResult, setGeneratedResult] = useState<{url: string, id: string} | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [showAuthModal, setShowAuthModal] = useState(false);
+  const [encouragingMessage, setEncouragingMessage] = useState('');
+  const [selectedPresetId, setSelectedPresetId] = useState<string | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
+  const [showServiceBanner, setShowServiceBanner] = useState(false);
+  const { currentUser, setCurrentUser, isLoading } = useUser();
+  const router = useRouter();
+
+  // 鼓励文案数组
+  const encouragingMessages = [
+    '正在分析您的图片特征...',
+    'AI正在理解您的风格需求...',
+    '正在生成专属IP形象...',
+    '快完成了，请耐心等待...',
+    '即将为您呈现精美作品...',
+    '最后的细节调整中...'
+  ];
+
+  // 预设风格选项
+  const stylePresets = [
+    {
+      id: 'kawaii',
+      label: 'Kawaii 软萌治愈',
+      description: '3D 等距视角全身潮玩手办，参照已上传的人像，忽略背景。精准保留参考图中的发型、饰品（如眼镜）、五官、表情、性别与气质，瘦脸。渲染光滑塑料质感表面，分割：头部、躯干、手臂、腿部、关节与现有配饰；倒角轮廓统一；柔和且鲜明的色块；细腻工作室反射；可爱与帅气并存；高真实感 3D 渲染，正方形 1:1。2.5 头身 Q 版比例，粉嫩马卡龙配色（peach #FADADD、mint #CCF1E1、baby‑blue #C8E5FF、lemon‑yellow #FFF6B2）；圆润放大双眼与淡粉腮红，额头两枚爱心亮片；软抱枕式泡泡袖与 oversized 兔耳兜帽卫衣；背包挂件：小星星与牛奶盒；柔焦漫反射光，糖果摄影棚氛围。'
+    },
+    {
+      id: 'cyberpunk',
+      label: 'Cyberpunk 潮酷赛博',
+      description: '3D 等距视角全身潮玩手办，参照已上传的人像，忽略背景。精准保留参考图中的发型、饰品（如眼镜）、五官、表情、性别与气质，瘦脸。渲染光滑塑料质感表面，分割：头部、躯干、手臂、腿部、关节与现有配饰；倒角轮廓统一；柔和且鲜明的色块；细腻工作室反射；可爱与帅气并存；高真实感 3D 渲染，正方形 1:1。5‑6 头身写实比例，霓虹紫‑电光青渐变主光（magenta #FF29FF → cyan #00F0FF）；Tech‑wear 折线剪裁外套，胸前微发光 QR‑patch，机械关节若隐若现；透明亚克力面罩内嵌 HUD 模块，边缘 RGB 呼吸灯；服装暗黑碳纤纹理与局部铬金属片，袖口环绕微弱电流特效；赛博城市夜景三点灯位反射，背景保持纯色虚化。'
+    },
+    {
+      id: 'guochao',
+      label: 'Guochao 国潮新中式',
+      description: '3D 等距视角全身潮玩手办，参照已上传的人像，忽略背景。精准保留参考图中的发型、饰品（如眼镜）、五官、表情、性别与气质，瘦脸。渲染光滑塑料质感表面，分割：头部、躯干、手臂、腿部、关节与现有配饰；倒角轮廓统一；柔和且鲜明的色块；细腻工作室反射；可爱与帅气并存；高真实感 3D 渲染，正方形 1:1。3.5 头身 Q‑real 比例，主配色：朱砂红 #E63946、琉璃青 #00867D，点缀鎏金 #D4AF37；改良短款对襟汉服上衣搭配现代运动裤剪裁，盘扣与云纹压印；胸口织金飞鹤纹章，腰间流苏玉佩；袖口与鞋侧水墨晕染渐变呼应山水；柔光棚宣纸台面微反射。'
+    }
+  ];
+
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragOver(true);
+  }, []);
+
+  const handleDragLeave = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragOver(false);
+  }, []);
+
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragOver(false);
+    const files = Array.from(e.dataTransfer.files);
+    handleFiles(files);
+  }, []);
+
+  const handleFileInput = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    console.log('文件输入事件触发:', e.target.files);
+    const files = Array.from(e.target.files || []);
+    handleFiles(files);
+  }, []);
+
+  const handleFiles = (files: File[]) => {
+    console.log('handleFiles 被调用，文件数量:', files.length);
+    console.log('处理的文件:', files);
+
+    // 过滤图片文件
+    const imageFiles = files.filter(file => file.type.startsWith('image/'));
+    console.log('过滤后的图片文件:', imageFiles);
+
+    if (imageFiles.length === 0) {
+      console.log('没有找到图片文件');
+      setError('请上传图片文件');
+      return;
+    }
+
+    // 只处理第一张图片，覆盖之前的图片
+    const file = imageFiles[0];
+    console.log('准备处理图片文件:', file.name, file.size, file.type);
+
+    // 验证图片文件
+    const validation = validateImageFile(file);
+    console.log('图片验证结果:', validation);
+    if (!validation.valid) {
+      setError(validation.error || '图片文件无效');
+      return;
+    }
+
+    // 清除之前的错误和结果
+    setError(null);
+    setGeneratedResult(null);
+    console.log('开始读取图片文件...');
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      console.log('图片读取完成');
+      const result = e.target?.result as string;
+      const imageId = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+      setUploadedImage({ id: imageId, url: result, file });
+      console.log('图片已设置为上传图片:', imageId);
+      
+      // 滚动到页面顶部
+      window.scrollTo({
+        top: 0,
+        behavior: 'smooth'
+      });
+    };
+    reader.onerror = (error) => {
+      console.error('图片读取失败:', error);
+      setError('图片读取失败，请重试');
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const removeImage = () => {
+    setUploadedImage(null);
+    setGeneratedResult(null);
+    setError(null);
+  };
+
+  const selectStylePreset = (preset: typeof stylePresets[0]) => {
+    setSelectedPresetId(preset.id);
+    setStyleDescription(preset.description);
+  };
+
+  // Download generated image
+  const downloadGeneratedImage = async () => {
+    if (!generatedResult) return;
+
+    try {
+      const response = await fetch(generatedResult.url);
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `popverse-ip-${generatedResult.id}.png`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('下载失败:', error);
+      setError('下载失败，请稍后重试');
+    }
+  };
+
+  // Handle save IP character
+  const handleSaveIPCharacter = async () => {
+    // 1. 检查是否有生成的IP形象
+    if (!generatedResult) {
+      setError('请先生成IP形象');
+      return;
+    }
+
+    // 2. 如果用户状态正在加载，等待加载完成
+    if (isLoading) {
+      console.log('用户状态加载中，稍后重试...');
+      return;
+    }
+
+    // 3. 检查用户登录状态
+    if (!currentUser) {
+      console.log('用户未登录，保存待处理数据并显示登录窗口');
+      
+      // 保存待处理的IP数据到 sessionStorage
+      if (generatedResult) {
+        sessionStorage.setItem('pending_ip_save', JSON.stringify({
+          name: `IP形象_${Date.now()}`,
+          imageUrl: generatedResult.url,
+          timestamp: Date.now()
+        }));
+      }
+      
+      setShowAuthModal(true);
+      return;
+    }
+
+    // 4. 验证用户数据的完整性
+    if (!currentUser.id || !currentUser.username) {
+      console.error('用户数据不完整:', currentUser);
+      setError('用户信息异常，请重新登录');
+      setShowAuthModal(true);
+      return;
+    }
+
+    console.log('用户已登录，开始保存IP形象...', { 
+      userId: currentUser.id, 
+      username: currentUser.username 
+    });
+
+    setIsSaving(true);
+    setError(null);
+
+    try {
+      // Save IP character to user's collection
+      const savedIP = await saveUserIPCharacter(
+        currentUser.id, 
+        `IP形象_${Date.now()}`, 
+        generatedResult.url
+      );
+      
+      console.log('IP形象保存成功，跳转到详情页:', savedIP.id);
+      // 直接跳转到刚保存的IP详情页
+      router.push(`/workshop?ipId=${savedIP.id}`);
+    } catch (error) {
+      console.error('保存IP形象失败:', error);
+      
+      // 针对不同错误类型给出相应提示
+      if (error instanceof Error) {
+        if (error.message.includes('认证失败') || error.message.includes('JWT') || error.message.includes('unauthorized')) {
+          setError('登录状态已过期，请重新登录');
+          setShowAuthModal(true);
+        } else if (error.message.includes('网络连接失败') || error.message.includes('Failed to fetch')) {
+          setError('网络连接失败，请检查网络后重试');
+        } else {
+          setError(`保存失败: ${error.message}`);
+        }
+      } else {
+        setError('保存失败: 未知错误');
+      }
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  // Save IP character after authentication
+  const saveIPAfterAuth = async (user: AuthUser) => {
+    if (!generatedResult) return;
+
+    setIsSaving(true);
+    setError(null);
+
+    try {
+      const savedIP = await saveUserIPCharacter(user.id, `IP形象_${Date.now()}`, generatedResult.url);
+      // 直接跳转到刚保存的IP详情页
+      router.push(`/workshop?ipId=${savedIP.id}`);
+    } catch (error) {
+      console.error('保存IP形象失败:', error);
+      setError(`保存失败: ${error instanceof Error ? error.message : '未知错误'}`);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  // Handle AI generation
+  const handleGenerate = async () => {
+    if (!uploadedImage) return;
+
+    setIsGenerating(true);
+    setError(null);
+    
+    // 开始鼓励文案循环
+    let messageIndex = 0;
+    setEncouragingMessage(encouragingMessages[0]);
+    const messageInterval = setInterval(() => {
+      messageIndex = (messageIndex + 1) % encouragingMessages.length;
+      setEncouragingMessage(encouragingMessages[messageIndex]);
+    }, 5000);
+
+    try {
+      // 准备生成请求
+      let prompt = styleDescription || '可爱的卡通风格，大眼睛，温暖的色调，适合做成毛绒玩具';
+
+      // 如果没有自定义描述，基于图片类型生成更好的提示
+      if (!styleDescription) {
+        prompt = '可爱的卡通IP形象，圆润的设计，明亮的色彩，大眼睛，友好的表情，适合制作手机壳、钥匙扣等周边产品';
+      }
+
+      let imageToSend: File | string;
+      if (uploadedImage.file) {
+        imageToSend = uploadedImage.file;
+      } else {
+        // 如果是示例图片，使用URL
+        imageToSend = uploadedImage.url;
+      }
+
+      console.log('开始生成IP形象...', { prompt, hasFile: !!uploadedImage.file });
+
+      // 简化的API调用，无重试逻辑
+      const result = await generateIPCharacter({
+        image: imageToSend,
+        prompt: prompt
+      });
+
+      if (result.success && result.data) {
+        setGeneratedResult(result.data);
+        console.log('生成成功:', result.data);
+        
+        // 自动保存逻辑：暂时禁用，等待Supabase配置完成
+        // TODO: 配置好Supabase环境变量后重新启用
+        console.log('自动保存已暂时禁用（等待数据库配置）');
+        /*
+        if (currentUser && !isLoading && result.data) {
+          console.log('用户已登录，开始自动保存IP形象...');
+          try {
+            await saveUserIPCharacter(currentUser.id, `IP形象_${Date.now()}`, result.data.url);
+            console.log('✅ IP形象已自动保存到用户收藏');
+            // 可以显示一个成功提示，但不重定向，让用户继续查看结果
+          } catch (saveError) {
+            console.warn('⚠️ 自动保存失败，但生成成功:', saveError);
+            // 自动保存失败不影响主流程，用户仍然可以手动保存
+          }
+        } else {
+          console.log('用户未登录，跳过自动保存');
+        }
+        */
+      } else {
+        // 简化错误处理，直接显示API返回的错误信息
+        const errorMessage = result.error || '生成失败，请稍后重试';
+        setError(errorMessage);
+
+        // 如果是服务维护错误，显示状态横幅
+        if (errorMessage.includes('维护中') || errorMessage.includes('暂时不可用') || errorMessage.includes('Service Unavailable')) {
+          setShowServiceBanner(true);
+        }
+      }
+    } catch (error) {
+      console.error('生成过程中出错:', error);
+      // 统一的错误处理，不区分错误类型
+      setError('网络异常，请检查连接后重试');
+    } finally {
+      clearInterval(messageInterval);
+      setIsGenerating(false);
+      setEncouragingMessage('');
+    }
+  };
+
+  const exampleImages = [
+    {
+      src: '/examples/cartoon-character.jpeg',
+      alt: '卡通角色示例'
+    },
+    {
+      src: '/examples/pet-ip.jpeg',
+      alt: '宠物IP示例'
+    },
+    {
+      src: '/examples/character-portrait.jpeg',
+      alt: '人物形象示例'
+    }
+  ];
+
+  return (
+    <section className="min-h-screen flex flex-col">
+      {/* 主要内容区域 - 增加顶部间隙，让布局更大气 */}
+      <div className="flex-1 flex items-start justify-center px-4 sm:px-6 lg:px-8 pt-8 lg:pt-12 pb-8">
+        <div className="max-w-7xl w-full">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-8 items-start">
+            {/* Left Content */}
+            <div className="flex flex-col space-y-4 lg:space-y-5">
+              {!uploadedImage && (
+                <h1 className="text-2xl lg:text-3xl xl:text-4xl font-bold leading-tight flex-shrink-0 mt-4 lg:mt-6">
+                  上传一张<span className="highlight-green">图片</span>，
+                  创造专属<span className="highlight-green">IP形象</span>，
+                  生成完整<span className="highlight-green">周边套装</span>
+                  <span className="underline decoration-4 underline-offset-4">秒级完成</span>
+                </h1>
+              )}
+
+              {!uploadedImage && (
+                <p className="text-lg lg:text-xl text-gray-600 leading-relaxed flex-shrink-0">
+                  只需描述您想要的IP风格，我们的AI就能为您生成卡通形象，并制作手机壳、钥匙扣、3D手办、冰箱贴等完整周边产品线
+                </p>
+              )}
+
+              {/* Upload Area - 显示上传区域或已上传的图片 */}
+              <div className="flex-shrink-0">
+                {uploadedImage ? (
+                  <div className="relative max-h-[240px] lg:max-h-[280px] overflow-hidden rounded-2xl bg-gray-50">
+                    <img
+                      src={uploadedImage.url}
+                      alt="用户上传的图片"
+                      className="w-full h-auto max-h-[240px] lg:max-h-[280px] object-contain rounded-2xl"
+                    />
+                    <button
+                      onClick={removeImage}
+                      className="absolute top-2 right-2 w-8 h-8 bg-black/50 hover:bg-black/70 rounded-full flex items-center justify-center text-white transition-all"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                ) : (
+                  <div
+                    className={`upload-area bg-gray-50 p-4 lg:p-5 text-center cursor-pointer transition-all duration-300 ${
+                      isDragOver ? 'dragover' : ''
+                    }`}
+                    onDragOver={handleDragOver}
+                    onDragLeave={handleDragLeave}
+                    onDrop={handleDrop}
+                    onClick={() => {
+                      console.log('点击上传区域');
+                      const fileInput = document.getElementById('file-input');
+                      if (fileInput) {
+                        fileInput.click();
+                      } else {
+                        console.error('找不到文件输入元素');
+                      }
+                    }}
+                  >
+                    <div className="flex items-center justify-center mb-3">
+                      <Upload className="w-6 h-6 lg:w-8 lg:h-8 text-gray-400 mr-3" />
+                      <Wand2 className="w-6 h-6 lg:w-8 lg:h-8 text-cleanup-green" />
+                    </div>
+                    <p className="text-base lg:text-lg font-medium text-gray-700 mb-2">
+                      点击或拖拽上传图片
+                    </p>
+                    <p className="text-sm text-gray-500">
+                      支持 JPG、PNG 格式，建议尺寸 1024x1024
+                    </p>
+                    <input
+                      id="file-input"
+                      type="file"
+                      accept="image/*"
+                      onChange={handleFileInput}
+                      className="hidden"
+                    />
+                  </div>
+                )}
+              </div>
+
+              {/* Style Input - 紧凑布局 */}
+              <div className="space-y-2 flex-shrink-0">
+                <label className="block text-sm font-medium text-gray-700">
+                  描述您想要的IP风格（可选）
+                </label>
+
+                {/* Style Presets - 更紧凑的网格 */}
+                <div className="grid grid-cols-3 gap-1.5 mb-2">
+                  {stylePresets.map((preset) => (
+                    <button
+                      key={preset.id}
+                      onClick={() => selectStylePreset(preset)}
+                      className={`px-2 py-1 text-xs lg:text-sm rounded-full transition-colors border ${
+                        selectedPresetId === preset.id
+                          ? 'bg-cleanup-green text-black border-cleanup-green'
+                          : 'bg-gray-100 hover:bg-cleanup-green hover:text-black text-gray-700 border-gray-200 hover:border-cleanup-green'
+                      }`}
+                    >
+                      {preset.label}
+                    </button>
+                  ))}
+                </div>
+
+                <textarea
+                  value={styleDescription}
+                  onChange={(e) => {
+                    setStyleDescription(e.target.value);
+                    setSelectedPresetId(null);
+                  }}
+                  placeholder="例如：可爱的卡通风格，大眼睛，温暖的色调，适合做成毛绒玩具..."
+                  className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cleanup-green focus:border-cleanup-green resize-none text-sm"
+                  rows={2}
+                />
+
+                {styleDescription && (
+                  <div className="flex justify-end">
+                    <button
+                      onClick={() => {
+                        setStyleDescription('');
+                        setSelectedPresetId(null);
+                      }}
+                      className="text-xs text-gray-500 hover:text-gray-700 underline"
+                    >
+                      清空描述
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {/* Service Status Banner */}
+              {showServiceBanner && (
+                <ServiceStatusBanner
+                  onRetry={() => {
+                    setShowServiceBanner(false);
+                    setError(null);
+                  }}
+                />
+              )}
+
+              {/* Error Display */}
+              {error && !showServiceBanner && (
+                <div className="bg-red-50 border border-red-200 rounded-lg p-2 flex items-center space-x-3">
+                  <AlertCircle className="w-4 h-4 text-red-500 flex-shrink-0" />
+                  <p className="text-red-700 text-sm">{error}</p>
+                </div>
+              )}
+
+              {/* Success Display */}
+              {generatedResult && (
+                <div className="bg-green-50 border border-green-200 rounded-lg p-2 flex items-center space-x-3">
+                  <CheckCircle className="w-4 h-4 text-green-500 flex-shrink-0" />
+                  <p className="text-green-700 text-sm">IP形象生成成功！查看右侧预览</p>
+                </div>
+              )}
+
+              {/* 主操作按钮 */}
+              <div className="flex flex-col items-center flex-shrink-0">
+                <button
+                  onClick={handleGenerate}
+                  disabled={!uploadedImage || isGenerating}
+                  className="w-full max-w-xs py-2 px-6 rounded-xl bg-white text-black font-bold text-base border border-gray-300 shadow hover:bg-gray-50 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isGenerating ? '生成中...' : generatedResult ? '重新生成IP形象' : '开始生成IP形象'}
+                </button>
+              </div>
+
+              {/* Try with examples - 确保始终可见，并修复交互 */}
+              {!uploadedImage && (
+                <div className="text-center flex-shrink-0 py-6 border-t border-gray-100 mt-6">
+                  <div className="flex items-center justify-center mb-4">
+                    <ArrowDown className="w-5 h-5 text-gray-400 mr-2" />
+                    <span className="text-base font-medium text-gray-600">或试试这些示例</span>
+                  </div>
+
+                  <div className="flex justify-center space-x-4 flex-wrap gap-y-4">
+                    {exampleImages.map((image) => (
+                      <button
+                        key={image.alt}
+                        className="w-20 h-20 lg:w-24 lg:h-24 rounded-xl overflow-hidden hover:opacity-80 hover:scale-105 transition-all duration-200 border-2 border-gray-200 hover:border-cleanup-green shadow-md hover:shadow-lg flex-shrink-0"
+                        onClick={async () => {
+                          console.log('点击示例图片:', image.alt);
+                          
+                          // 设置示例图片作为上传图片
+                          const imageId = `example-${Date.now()}`;
+                          setUploadedImage({ id: imageId, url: image.src });
+                          setError(null);
+                          setGeneratedResult(null);
+                          
+                          // 滚动到页面顶部
+                          window.scrollTo({
+                            top: 0,
+                            behavior: 'smooth'
+                          });
+                          
+                          console.log('示例图片已设置为上传图片，页面已滚动到顶部');
+                        }}
+                      >
+                        <img
+                          src={image.src}
+                          alt={image.alt}
+                          className="w-full h-full object-cover"
+                        />
+                      </button>
+                    ))}
+                  </div>
+                  
+                  <p className="text-sm text-gray-500 mt-3">
+                    点击任意示例图片开始体验
+                  </p>
+                </div>
+              )}
+            </div>
+
+            {/* Right Content - Product Showcase */}
+            <div className="flex justify-center lg:justify-end">
+              <div className="relative max-w-md w-full flex flex-col justify-center">
+                {/* Main Product Image */}
+                {generatedResult ? (
+                  /* Generated IP Character */
+                  <>
+                    <div className="relative">
+                      <img
+                        src={generatedResult.url}
+                        alt="生成的IP形象"
+                        className="w-full h-auto rounded-2xl shadow-2xl min-h-[480px] lg:min-h-[520px] max-h-[480px] lg:max-h-[520px] object-contain"
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent rounded-2xl pointer-events-none" />
+                    </div>
+                    {/* 操作按钮区域 */}
+                    <div className="flex flex-row justify-center items-center gap-2 lg:gap-4 px-3 lg:px-6 py-3 lg:py-4 bg-white rounded-2xl shadow-xl border border-gray-100 mt-6 mx-auto max-w-full sm:max-w-sm">
+                      <button
+                        onClick={handleSaveIPCharacter}
+                        disabled={isSaving}
+                        className="flex flex-col items-center gap-1 px-3 sm:px-6 lg:px-8 py-2 lg:py-3 rounded-2xl bg-cleanup-green text-black font-bold text-sm sm:text-base lg:text-lg shadow-lg border-2 border-cleanup-green hover:bg-green-300 transition-all flex-1 disabled:opacity-50 disabled:cursor-not-allowed min-w-0"
+                      >
+                        <span className="flex items-center gap-1 lg:gap-2 text-sm sm:text-base lg:text-lg font-bold whitespace-nowrap">
+                          {isSaving ? (
+                            <Loader2 className="w-4 h-4 lg:w-5 lg:h-5 animate-spin" />
+                          ) : (
+                            <Sparkles className="w-4 h-4 lg:w-5 lg:h-5" />
+                          )}
+                          {isSaving ? '保存中...' : '保存IP形象'}
+                        </span>
+                        <span className="text-xs sm:text-sm lg:text-sm font-medium whitespace-nowrap">
+                          {isSaving ? '请稍候' : '立即生成周边'}
+                        </span>
+                      </button>
+                      <button
+                        onClick={downloadGeneratedImage}
+                        className="p-2 bg-transparent border-none shadow-none hover:bg-gray-100 rounded-full text-gray-400 hover:text-gray-600 transition-all flex-shrink-0"
+                        aria-label="下载图片"
+                      >
+                        <ArrowDown className="w-4 h-4 lg:w-5 lg:h-5" />
+                      </button>
+                    </div>
+                  </>
+                ) : isGenerating ? (
+                  /* Generation Loading State */
+                  <div className="relative">
+                    <div className="w-full h-[480px] lg:h-[520px] bg-gradient-to-br from-cleanup-green/10 to-blue-50 rounded-2xl shadow-2xl flex flex-col items-center justify-center">
+                      <div className="mb-6">
+                        <Loader2 className="w-12 h-12 animate-spin text-cleanup-green mb-3" />
+                        <div className="w-24 h-1.5 bg-gray-200 rounded-full overflow-hidden">
+                          <div className="h-full bg-cleanup-green rounded-full animate-pulse" style={{width: '60%'}} />
+                        </div>
+                      </div>
+                      <div className="text-center max-w-xs px-4">
+                        <h3 className="text-base font-semibold text-gray-800 mb-2">AI正在创作中...</h3>
+                        <p className="text-sm text-gray-600 leading-relaxed">
+                          {encouragingMessage}
+                        </p>
+                      </div>
+                      <div className="absolute bottom-3 left-3 right-3">
+                        <div className="bg-white/90 backdrop-blur-sm rounded-lg p-2 text-center">
+                          <p className="text-xs text-gray-600">预计需要 60-120 秒</p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  /* Default Product Showcase - 图片自适应高度居中，装饰图标紧贴 */
+                  <div className="relative flex items-center justify-center min-h-[60vh] lg:min-h-[70vh]">
+                    <div className="relative max-w-full max-h-full mt-10">
+                      <img
+                        src="/task-home-image-replace/@Chat.png"
+                        alt="IP形象展示"
+                        className="w-auto h-auto max-w-full max-h-[60vh] lg:max-h-[70vh] rounded-2xl shadow-2xl object-contain"
+                      />
+
+                      {/* 右上角产品数量标签 */}
+                      <div className="absolute top-2 right-2 bg-cleanup-green text-black px-3 py-1 rounded-full text-sm font-bold shadow-lg">
+                        30+
+                      </div>
+                    
+                      {/* 周围装饰图标 - 紧贴图片边缘，无留白 */}
+
+                      {/* 左上角 - 手机壳 */}
+                      <div className="absolute top-0 left-0 w-12 h-12 bg-white rounded-lg shadow-lg flex items-center justify-center opacity-95 hover:opacity-100 transition-all hover:scale-110 transform -translate-x-1/2 -translate-y-1/2">
+                        <span className="text-xl">📱</span>
+                      </div>
+
+                      {/* 右上角 - T恤 */}
+                      <div className="absolute top-0 right-0 w-12 h-12 bg-white rounded-lg shadow-lg flex items-center justify-center opacity-95 hover:opacity-100 transition-all hover:scale-110 transform translate-x-1/2 -translate-y-1/2">
+                        <span className="text-xl">👕</span>
+                      </div>
+
+                      {/* 左下角 - 钥匙扣 */}
+                      <div className="absolute bottom-0 left-0 w-10 h-10 bg-white rounded-full shadow-lg flex items-center justify-center opacity-95 hover:opacity-100 transition-all hover:scale-110 transform -translate-x-1/2 translate-y-1/2">
+                        <span className="text-lg">🗝️</span>
+                      </div>
+
+                      {/* 右下角 - 3D手办 */}
+                      <div className="absolute bottom-0 right-0 w-14 h-14 bg-white rounded-lg shadow-lg flex items-center justify-center opacity-95 hover:opacity-100 transition-all hover:scale-110 transform translate-x-1/2 translate-y-1/2">
+                        <span className="text-2xl">🎎</span>
+                      </div>
+
+                      {/* 左侧中间 - 马克杯 */}
+                      <div className="absolute top-1/2 left-0 w-10 h-10 bg-white rounded-lg shadow-lg flex items-center justify-center opacity-95 hover:opacity-100 transition-all hover:scale-110 transform -translate-x-1/2 -translate-y-1/2">
+                        <span className="text-lg">☕</span>
+                      </div>
+
+                      {/* 右侧中间 - 冰箱贴 */}
+                      <div className="absolute top-1/2 right-0 w-8 h-8 bg-white rounded-md shadow-lg flex items-center justify-center opacity-95 hover:opacity-100 transition-all hover:scale-110 transform translate-x-1/2 -translate-y-1/2">
+                        <span className="text-sm">🧲</span>
+                      </div>
+
+                      {/* 上方中间 - 徽章 */}
+                      <div className="absolute top-0 left-1/2 w-9 h-9 bg-white rounded-full shadow-lg flex items-center justify-center opacity-95 hover:opacity-100 transition-all hover:scale-110 transform -translate-x-1/2 -translate-y-1/2">
+                        <span className="text-lg">🏅</span>
+                      </div>
+
+                      {/* 下方中间 - 贴纸 */}
+                      <div className="absolute bottom-0 left-1/2 w-8 h-8 bg-white rounded-full shadow-lg flex items-center justify-center opacity-95 hover:opacity-100 transition-all hover:scale-110 transform -translate-x-1/2 translate-y-1/2">
+                        <span className="text-sm">🎨</span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* AuthModal */}
+      {showAuthModal && (
+        <AuthModal
+          isOpen={showAuthModal}
+          onClose={() => setShowAuthModal(false)}
+          onSuccess={(user) => {
+            // Google OAuth 使用重定向，这个回调可能不会被调用
+            // 但保留作为备用
+            setShowAuthModal(false);
+          }}
+        />
+      )}
+    </section>
+  );
+}

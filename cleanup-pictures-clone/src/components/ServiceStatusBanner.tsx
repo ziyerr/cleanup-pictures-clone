@@ -10,6 +10,12 @@ interface ServiceStatusBannerProps {
 export default function ServiceStatusBanner({ onRetry }: ServiceStatusBannerProps) {
   const [isVisible, setIsVisible] = useState(true);
   const [isChecking, setIsChecking] = useState(false);
+  const [lastUpdateTime, setLastUpdateTime] = useState<string>('');
+
+  // 设置客户端时间，避免水合错误
+  useEffect(() => {
+    setLastUpdateTime(new Date().toLocaleTimeString());
+  }, []);
 
   const handleRetry = async () => {
     setIsChecking(true);
@@ -23,6 +29,9 @@ export default function ServiceStatusBanner({ onRetry }: ServiceStatusBannerProp
         setIsVisible(false);
         if (onRetry) onRetry();
       }
+      
+      // 更新时间
+      setLastUpdateTime(new Date().toLocaleTimeString());
     } catch (error) {
       console.error('Service check failed:', error);
     } finally {
@@ -70,9 +79,11 @@ export default function ServiceStatusBanner({ onRetry }: ServiceStatusBannerProp
                 </>
               )}
             </button>
-            <span className="text-xs text-amber-600">
-              最后更新: {new Date().toLocaleTimeString()}
-            </span>
+            {lastUpdateTime && (
+              <span className="text-xs text-amber-600">
+                最后更新: {lastUpdateTime}
+              </span>
+            )}
           </div>
         </div>
         <button
