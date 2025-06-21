@@ -377,27 +377,28 @@ export default function IPDetail({ ipCharacter, onBack, onUpdate }: IPDetailProp
                 className="w-full h-full object-cover"
               />
               
-              {/* 装饰图标 - 4个核心产品 */}
-              <div className="absolute inset-0 pointer-events-none z-10">
-                {/* 30+ 产品标识 - 右上角 */}
-                <div className="absolute -top-4 -right-4 w-16 h-16 bg-cleanup-green rounded-full flex items-center justify-center shadow-lg border-4 border-white">
-                  <span className="text-black font-bold text-xs">30+</span>
-                </div>
-                
-                {/* 手机壳 - 左上角边缘 */}
-                <div className="absolute -top-3 -left-3 w-12 h-12 bg-white rounded-lg flex items-center justify-center shadow-lg border-2 border-cleanup-green hover:scale-110 transition-transform">
-                  <span className="text-lg">📱</span>
-                </div>
-                
-                {/* 钥匙扣 - 左下角边缘 */}
-                <div className="absolute -bottom-3 -left-3 w-10 h-10 bg-white rounded-full flex items-center justify-center shadow-lg border border-gray-200 hover:scale-110 transition-transform">
-                  <span className="text-sm">🗝️</span>
-                </div>
-                
-                {/* 衣服 - 右下角边缘 */}
-                <div className="absolute -bottom-3 -right-3 w-12 h-12 bg-white rounded-lg flex items-center justify-center shadow-lg border border-gray-200 hover:scale-110 transition-transform">
-                  <span className="text-lg">👕</span>
-                </div>
+            </div>
+            
+            {/* 悬浮装饰图标 - 4个核心产品，悬浮在图片边缘外 */}
+            <div className="absolute inset-0 pointer-events-none z-20">
+              {/* 30+ 产品标识 - 右上角悬浮 */}
+              <div className="absolute -top-8 -right-8 w-16 h-16 bg-cleanup-green rounded-full flex items-center justify-center shadow-xl border-4 border-white hover:scale-110 transition-transform">
+                <span className="text-black font-bold text-xs">30+</span>
+              </div>
+              
+              {/* 手机壳 - 左上角往下移120px */}
+              <div className="absolute -left-6 w-12 h-12 bg-white rounded-lg flex items-center justify-center shadow-xl border-2 border-cleanup-green hover:scale-110 transition-transform" style={{top: '120px'}}>
+                <span className="text-lg">📱</span>
+              </div>
+              
+              {/* 钥匙扣 - 左下角悬浮 */}
+              <div className="absolute -bottom-6 -left-6 w-10 h-10 bg-white rounded-full flex items-center justify-center shadow-xl border border-gray-200 hover:scale-110 transition-transform">
+                <span className="text-sm">🗝️</span>
+              </div>
+              
+              {/* 衣服 - 右下角往上移120px */}
+              <div className="absolute -right-6 w-12 h-12 bg-white rounded-lg flex items-center justify-center shadow-xl border border-gray-200 hover:scale-110 transition-transform" style={{bottom: '120px'}}>
+                <span className="text-lg">👕</span>
               </div>
             </div>
             
