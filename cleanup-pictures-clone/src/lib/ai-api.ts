@@ -77,17 +77,17 @@ export interface TaskStatusResponse {
 // API Configuration - APICore配置 (根据官方文档https://doc.apicore.ai/api-301177866更新)
 // 强制使用gpt-4o-image模型进行所有图片生成
 const AI_API_CONFIG = {
-  apiKey: process.env.AI_API_KEY || process.env.NEXT_PUBLIC_SPARROW_API_KEY || 'sk-FEtnKGEiUOj5Dv4kahtX2179RvK9OvaFGjfpf4o8Idbhk6Ql',
-  baseUrl: process.env.AI_API_BASE_URL || 'https://api.apicore.ai/v1', // 使用官方文档中的正确API地址
-  model: 'gpt-4o-image', // 强制使用gpt-4o-image进行图生图，不允许环境变量覆盖
-  endpoint: '/chat/completions' // 使用chat格式
+  apiKey: process.env.AI_API_KEY || 'sk-DudMcfHfR2LzzePep763GUhx9I5594RAciiegxG4EgrpGmos',
+  baseUrl: process.env.AI_API_BASE_URL || 'https://api.apicore.ai/v1',
+  model: 'gpt-4o-image', // 强制使用gpt-4o-image进行图生图
+  endpoint: '/chat/completions'
 };
 
 // 配置：使用官方APICore endpoint - 全部强制使用gpt-4o-image
 const ALTERNATIVE_CONFIGS = [
   {
     name: 'gpt-4o-image-primary',
-    apiKey: process.env.AI_API_KEY || process.env.NEXT_PUBLIC_SPARROW_API_KEY || 'sk-FEtnKGEiUOj5Dv4kahtX2179RvK9OvaFGjfpf4o8Idbhk6Ql',
+    apiKey: process.env.AI_API_KEY || 'sk-DudMcfHfR2LzzePep763GUhx9I5594RAciiegxG4EgrpGmos',
     baseUrl: 'https://api.apicore.ai/v1',
     endpoint: '/chat/completions',
     model: 'gpt-4o-image' // 强制使用gpt-4o-image进行图生图
@@ -109,13 +109,15 @@ const fileToBase64 = (file: File): Promise<string> => {
   });
 };
 
-// 优化的图片压缩函数 - 针对10M内图片，最大程度保持精度
-const compressImage = async (file: File, maxSizeKB = 5120): Promise<File | Blob> => {
-  // 对于小文件（2MB以下），直接跳过压缩
-  if (file.size <= 2 * 1024 * 1024) {
-    console.log('文件较小，跳过压缩:', file.size, 'bytes');
+// 优化的图片压缩函数 - 针对APICore gpt-4o-image优化
+const compressImage = async (file: File, maxSizeKB = 3072): Promise<File | Blob> => {
+  // 对于小文件（1MB以下），直接跳过压缩
+  if (file.size <= 1 * 1024 * 1024) {
+    console.log('📁 文件较小，跳过压缩:', (file.size / 1024).toFixed(1), 'KB');
     return file;
   }
+  
+  console.log('🔄 开始压缩图片:', (file.size / 1024).toFixed(1), 'KB');
 
   return new Promise((resolve) => {
     const canvas = document.createElement('canvas');
@@ -123,14 +125,15 @@ const compressImage = async (file: File, maxSizeKB = 5120): Promise<File | Blob>
     const img = new Image();
     
     img.onload = () => {
-      // 计算最优尺寸 - 保持原始比例
+      // 计算最优尺寸 - 针对gpt-4o-image优化
       let { width, height } = img;
-      const maxDimension = 1536; // 降低最大维度，减少文件大小
+      const maxDimension = 1280; // 适合gpt-4o-image的最大维度
       
       if (width > maxDimension || height > maxDimension) {
         const ratio = Math.min(maxDimension / width, maxDimension / height);
         width = Math.round(width * ratio);
         height = Math.round(height * ratio);
+        console.log(`📐 调整图片尺寸: ${img.width}x${img.height} → ${width}x${height}`);
       }
       
       canvas.width = width;
@@ -162,7 +165,7 @@ const compressImage = async (file: File, maxSizeKB = 5120): Promise<File | Blob>
                       lastModified: Date.now()
                     }
                   );
-                  console.log('压缩成功:', file.size, '→', blob.size, 'bytes');
+                  console.log(`✅ 压缩成功: ${(file.size / 1024).toFixed(1)}KB → ${(blob.size / 1024).toFixed(1)}KB`);
                   resolve(compressedFile);
                 }
               } else {
@@ -476,11 +479,13 @@ const tryGenerateWithFallback = async (request: AIGenerationRequest): Promise<AI
 // 单个API配置的调用函数 - 根据APICore文档修复
 const tryAPICall = async (config: typeof ALTERNATIVE_CONFIGS[0], prompt: string, imageFile?: File | Blob | string): Promise<AIGenerationResponse | null> => {
   try {
-    console.log(`尝试API调用 (${config.name}):`, {
+    console.log(`🚀 开始API调用 (${config.name}):`, {
       url: `${config.baseUrl}${config.endpoint}`,
       model: config.model,
+      apiKey: config.apiKey ? `${config.apiKey.substring(0, 8)}...${config.apiKey.substring(-4)}` : 'Not set',
       prompt: prompt.substring(0, 100) + '...',
-      hasImage: !!imageFile
+      hasImage: !!imageFile,
+      imageType: typeof imageFile
     });
 
     // 构建APICore gpt-4o-image的请求格式 - 根据官方文档更新
@@ -495,46 +500,41 @@ const tryAPICall = async (config: typeof ALTERNATIVE_CONFIGS[0], prompt: string,
           imageBase64 = imageFile;
         } else {
           // URL格式，需要下载并转换
+          console.log('🌐 下载远程图片:', imageFile.substring(0, 50) + '...');
           const response = await fetch(imageFile);
           if (!response.ok) {
             throw new Error(`Failed to fetch image: ${response.status}`);
           }
           const blob = await response.blob();
+          console.log('📥 图片下载完成:', (blob.size / 1024).toFixed(1), 'KB');
+          
           const buffer = await blob.arrayBuffer();
           const base64 = btoa(String.fromCharCode(...new Uint8Array(buffer)));
           imageBase64 = `data:${blob.type};base64,${base64}`;
         }
       } else {
-        // File或Blob对象
-        const base64 = await fileToBase64(imageFile as File);
-        const mimeType = (imageFile as File).type || 'image/png';
+        // File或Blob对象，先压缩
+        console.log('🔄 处理上传的图片文件...');
+        const processedFile = await compressImage(imageFile as File);
+        const base64 = await fileToBase64(processedFile as File);
+        const mimeType = (processedFile as File).type || (imageFile as File).type || 'image/png';
         imageBase64 = `data:${mimeType};base64,${base64}`;
+        console.log('✅ 图片处理完成，base64长度:', imageBase64.length);
       }
 
-      // 根据APICore文档格式构建请求体 - 使用标准OpenAI Chat格式
+      // 根据APICore文档格式构建请求体 - 简化的gpt-4o-image格式
       requestBody = {
         stream: false,
         model: config.model,
         messages: [
           {
             role: "user",
-            content: [
-              {
-                type: "text",
-                text: prompt
-              },
-              {
-                type: "image_url",
-                image_url: {
-                  url: imageBase64
-                }
-              }
-            ]
+            content: `${prompt}\n\n[图片数据: ${imageBase64.substring(0, 50)}...]`
           }
         ]
       };
     } else {
-      // 纯文生图
+      // 纯文生图 - 使用简化格式
       requestBody = {
         stream: false,
         model: config.model,
@@ -547,6 +547,14 @@ const tryAPICall = async (config: typeof ALTERNATIVE_CONFIGS[0], prompt: string,
       };
     }
 
+    console.log(`📦 发送请求体:`, {
+      model: requestBody.model,
+      messageCount: requestBody.messages?.length,
+      hasImage: requestBody.messages?.[0]?.content?.includes?.('图片数据') || 
+                requestBody.messages?.[0]?.content?.some?.((item: any) => item.type === 'image_url'),
+      requestSize: JSON.stringify(requestBody).length
+    });
+
     let response;
     try {
       response = await fetch(`${config.baseUrl}${config.endpoint}`, {
@@ -556,15 +564,26 @@ const tryAPICall = async (config: typeof ALTERNATIVE_CONFIGS[0], prompt: string,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify(requestBody),
-        signal: AbortSignal.timeout(120000) // 增加到120秒超时，gpt-4o-image需要更长处理时间
+        signal: AbortSignal.timeout(180000) // 增加到180秒超时，gpt-4o-image需要更长处理时间
       });
     } catch (fetchError) {
-      console.error(`Fetch调用失败 (${config.name}):`, {
+      console.error(`❌ Fetch调用失败 (${config.name}):`, {
         error: fetchError,
         message: fetchError instanceof Error ? fetchError.message : '未知fetch错误',
         type: fetchError instanceof Error ? fetchError.constructor.name : typeof fetchError,
-        url: `${config.baseUrl}${config.endpoint}`
+        url: `${config.baseUrl}${config.endpoint}`,
+        apiKeyValid: !!config.apiKey && config.apiKey.length > 10
       });
+      
+      // 提供更友好的错误信息
+      if (fetchError instanceof Error) {
+        if (fetchError.name === 'AbortError' || fetchError.message.includes('timeout')) {
+          throw new Error('请求超时，gpt-4o-image生成需要较长时间，请稍后重试');
+        }
+        if (fetchError.message.includes('Failed to fetch') || fetchError.message.includes('NetworkError')) {
+          throw new Error('网络连接失败，请检查网络连接后重试');
+        }
+      }
       throw fetchError;
     }
 
@@ -581,17 +600,54 @@ const tryAPICall = async (config: typeof ALTERNATIVE_CONFIGS[0], prompt: string,
         statusText: response.statusText,
         error: errorText,
         url: `${config.baseUrl}${config.endpoint}`,
-        model: config.model
+        model: config.model,
+        headers: Object.fromEntries(response.headers.entries())
       };
       
-      console.error(`API调用失败 (${config.name}):`, errorInfo);
+      console.error(`❌ API调用失败 (${config.name}):`, errorInfo);
       
-      // 直接抛出错误，不使用演示模式
-      throw new Error(`API调用失败: ${response.status} ${response.statusText} - ${errorText}`);
+      // 提供具体的错误信息
+      let friendlyError = '';
+      switch (response.status) {
+        case 401:
+          friendlyError = 'API密钥无效或已过期，请检查配置';
+          break;
+        case 402:
+          friendlyError = 'API账户余额不足，请充值后重试';
+          break;
+        case 429:
+          friendlyError = 'API调用频率过高，请稍后重试';
+          break;
+        case 500:
+          friendlyError = 'API服务器内部错误，请稍后重试';
+          break;
+        case 502:
+        case 503:
+        case 504:
+          friendlyError = 'API服务暂时不可用，请稍后重试';
+          break;
+        default:
+          friendlyError = `API调用失败: ${response.status} ${response.statusText}`;
+      }
+      
+      if (errorText && errorText.length < 200) {
+        friendlyError += ` - ${errorText}`;
+      }
+      
+      throw new Error(friendlyError);
     }
 
     const result = await response.json();
-    console.log(`API响应成功 (${config.name}):`, result);
+    console.log(`✅ API响应成功 (${config.name}):`, {
+      ...result,
+      choices: result.choices?.map((choice: any) => ({
+        ...choice,
+        message: {
+          ...choice.message,
+          content: choice.message?.content?.substring(0, 200) + '...'
+        }
+      }))
+    });
     
     // 解析gpt-4o-image的响应格式
     if (result.choices && result.choices.length > 0) {
@@ -599,10 +655,13 @@ const tryAPICall = async (config: typeof ALTERNATIVE_CONFIGS[0], prompt: string,
       const content = choice.message?.content;
       
       if (content) {
-        // 从响应中提取图片URL
-        const imageUrlMatch = content.match(/!\[.*?\]\((https?:\/\/[^\)]+)\)/);
+        console.log(`📝 响应内容分析 (${config.name}):`, content.substring(0, 500));
+        
+        // 方式1: 匹配Markdown图片格式
+        const imageUrlMatch = content.match(/!\[.*?\]\((https?:\/\/[^\s\)]+)\)/);
         if (imageUrlMatch) {
           const imageUrl = imageUrlMatch[1];
+          console.log(`🎯 提取到图片URL (Markdown格式): ${imageUrl}`);
           return {
             success: true,
             data: {
@@ -612,22 +671,44 @@ const tryAPICall = async (config: typeof ALTERNATIVE_CONFIGS[0], prompt: string,
           };
         }
         
-        // 如果没有找到图片URL，检查是否有其他格式的图片链接
-        const urlMatch = content.match(/(https?:\/\/[^\s]+\.(png|jpg|jpeg|webp))/i);
+        // 方式2: 匹配直接的图片URL
+        const urlMatch = content.match(/(https?:\/\/[^\s]+\.(png|jpg|jpeg|webp)(\?[^\s]*)?)/i);
         if (urlMatch) {
+          const imageUrl = urlMatch[1];
+          console.log(`🎯 提取到图片URL (直接格式): ${imageUrl}`);
           return {
             success: true,
             data: {
-              url: urlMatch[1],
+              url: imageUrl,
               id: uuidv4()
             }
           };
         }
+        
+        // 方式3: 匹配任何HTTPS链接
+        const httpsMatch = content.match(/(https:\/\/[^\s]+)/i);
+        if (httpsMatch) {
+          const imageUrl = httpsMatch[1];
+          console.log(`🎯 提取到HTTPS链接: ${imageUrl}`);
+          return {
+            success: true,
+            data: {
+              url: imageUrl,
+              id: uuidv4()
+            }
+          };
+        }
+        
+        // 如果都没找到，记录完整内容用于调试
+        console.warn(`⚠️ 未找到图片URL，完整响应内容:`, content);
+      } else {
+        console.error(`❌ 响应中没有content字段`, choice);
       }
+    } else {
+      console.error(`❌ 响应格式错误，没有choices字段:`, result);
     }
     
-    console.error(`API响应格式错误 (${config.name}):`, result);
-    throw new Error('API响应中未找到有效的图片URL');
+    throw new Error(`API响应中未找到有效的图片URL。响应格式: ${JSON.stringify(result, null, 2).substring(0, 500)}`);
     
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
@@ -642,8 +723,10 @@ const tryAPICall = async (config: typeof ALTERNATIVE_CONFIGS[0], prompt: string,
   }
 };
 
+// 导出一个异步函数，用于生成IP角色
 export const generateIPCharacter = async (request: AIGenerationRequest): Promise<AIGenerationResponse> => {
   try {
+    // 打印开始AI生成请求的信息
     console.log('开始AI生成请求:', request);
 
     // 演示模式已禁用 - 强制使用真实API生成
@@ -652,40 +735,47 @@ export const generateIPCharacter = async (request: AIGenerationRequest): Promise
     // 使用故障转移机制
     return await tryGenerateWithFallback(request);
   } catch (error) {
+    // 打印错误信息
     console.error('generateIPCharacter错误:', error);
     
     // 简化错误处理，用户友好的错误信息
     if (error instanceof Error) {
+      // 如果错误是AbortError或signal timed out，则返回图片生成超时的错误信息
       if (error.name === 'AbortError' || error.message.includes('signal timed out')) {
         return {
           success: false,
           error: '图片生成超时（120秒），请尝试简化提示词或稍后重试'
         };
       }
+      // 如果错误是Failed to fetch或NetworkError，则返回网络连接中断的错误信息
       if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError')) {
         return {
           success: false,
           error: '网络连接中断，请检查网络后重试'
         };
       }
+      // 如果错误是CONNECTION_RESET，则返回连接被重置的错误信息
       if (error.message.includes('CONNECTION_RESET')) {
         return {
           success: false,
           error: '连接被重置，请检查图片大小（建议小于5MB）后重试'
         };
       }
+      // 如果错误是503或Service Unavailable，则返回API服务暂时不可用的错误信息
       if (error.message.includes('503') || error.message.includes('Service Unavailable')) {
         return {
           success: false,
           error: 'API服务暂时不可用，请稍后重试'
         };
       }
+      // 如果错误是401或Unauthorized，则返回API密钥无效的错误信息
       if (error.message.includes('401') || error.message.includes('Unauthorized')) {
         return {
           success: false,
           error: 'API密钥无效，请联系管理员'
         };
       }
+      // 如果错误是429或Too Many Requests，则返回API调用频率过高的错误信息
       if (error.message.includes('429') || error.message.includes('Too Many Requests')) {
         return {
           success: false,
@@ -694,6 +784,7 @@ export const generateIPCharacter = async (request: AIGenerationRequest): Promise
       }
     }
     
+    // 如果错误不是Error类型，则返回图片生成失败的错误信息
     return {
       success: false,
       error: error instanceof Error ? error.message : '图片生成失败，请稍后重试'
@@ -1182,49 +1273,28 @@ const updateCharacterOnTaskCompletion = async (task: GenerationTask) => {
     }
 };
 
-// Simple test function to debug the gpt-4o-image API response format
+// 简化的API测试函数 - 用于调试gpt-4o-image
 export const testAPIResponse = async () => {
   try {
-    // Create a minimal test request with a small image (red square)
-    const canvas = document.createElement('canvas');
-    canvas.width = 100;
-    canvas.height = 100;
-    const ctx = canvas.getContext('2d')!;
-    ctx.fillStyle = '#ff0000';
-    ctx.fillRect(0, 0, 100, 100);
+    console.log('🧪 开始API连接测试...');
     
-    const blob = await new Promise<Blob>((resolve) => {
-      canvas.toBlob((blob) => resolve(blob!), 'image/png');
-    });
-    
-    // Convert to base64
-    const buffer = await blob.arrayBuffer();
-    const base64 = btoa(String.fromCharCode(...new Uint8Array(buffer)));
-    const imageBase64 = `data:image/png;base64,${base64}`;
-    
+    // 测试无图片的简单文本生成
     const requestBody = {
-      model: AI_API_CONFIG.model, // gpt-4o-image
+      model: AI_API_CONFIG.model,
       messages: [
         {
           role: "user",
-          content: [
-            {
-              type: "text",
-              text: "基于提供的参考图片，生成一个测试图片。要求JSON格式响应：```json\n{\"prompt\": \"test prompt\", \"ratio\": \"1:1\"}\n```"
-            },
-            {
-              type: "image_url", 
-              image_url: {
-                url: imageBase64
-              }
-            }
-          ]
+          content: "生成一个简单的测试图片，内容是一个红色的圆形，背景是白色。请返回图片URL。"
         }
       ],
       stream: false
     };
     
-    console.log('Testing gpt-4o-image API...');
+    console.log('📡 发送测试请求:', {
+      endpoint: `${AI_API_CONFIG.baseUrl}${AI_API_CONFIG.endpoint}`,
+      model: requestBody.model,
+      apiKey: AI_API_CONFIG.apiKey ? `${AI_API_CONFIG.apiKey.substring(0, 8)}...` : 'Not set'
+    });
     
     const response = await fetch(`${AI_API_CONFIG.baseUrl}${AI_API_CONFIG.endpoint}`, {
       method: 'POST',
@@ -1232,25 +1302,49 @@ export const testAPIResponse = async () => {
         'Authorization': `Bearer ${AI_API_CONFIG.apiKey}`,
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify(requestBody)
+      body: JSON.stringify(requestBody),
+      signal: AbortSignal.timeout(30000) // 30秒测试超时
     });
     
-    console.log('Test API Response Status:', response.status);
-    console.log('Test API Response Headers:', Object.fromEntries(response.headers.entries()));
+    console.log('📋 测试响应状态:', {
+      status: response.status,
+      statusText: response.statusText,
+      headers: Object.fromEntries(response.headers.entries())
+    });
     
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('Test API Error:', errorText);
-      return { success: false, error: errorText };
+      console.error('❌ 测试API错误:', errorText);
+      return { 
+        success: false, 
+        error: `HTTP ${response.status}: ${errorText}`,
+        status: response.status
+      };
     }
     
     const result = await response.json();
-    console.log('Test API Raw Response:', JSON.stringify(result, null, 2));
+    console.log('✅ 测试API响应成功:', {
+      hasChoices: !!result.choices,
+      choicesLength: result.choices?.length,
+      firstChoice: result.choices?.[0]?.message?.content?.substring(0, 200)
+    });
     
-    return { success: true, response: result };
+    return { 
+      success: true, 
+      response: result,
+      summary: {
+        model: result.model,
+        usage: result.usage,
+        contentPreview: result.choices?.[0]?.message?.content?.substring(0, 200)
+      }
+    };
   } catch (error) {
-    console.error('Test API Exception:', error);
-    return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
+    console.error('❌ 测试API异常:', error);
+    return { 
+      success: false, 
+      error: error instanceof Error ? error.message : 'Unknown error',
+      type: error instanceof Error ? error.constructor.name : typeof error
+    };
   }
 };
 

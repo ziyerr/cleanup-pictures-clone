@@ -247,11 +247,11 @@ export default function HeroSection() {
 
     try {
       // 准备生成请求
-      let prompt = styleDescription || '可爱的卡通风格，大眼睛，温暖的色调，适合做成毛绒玩具';
+      let prompt = styleDescription || '可爱的卡通风格，大眼睛，温暖的色调，适合做成毛绒玩具。需要确保生成的IP形象完整，包含完整的身体和四肢';
 
       // 如果没有自定义描述，基于图片类型生成更好的提示
       if (!styleDescription) {
-        prompt = '可爱的卡通IP形象，圆润的设计，明亮的色彩，大眼睛，友好的表情，适合制作手机壳、钥匙扣等周边产品';
+        prompt = '可爱的卡通IP形象，圆润的设计，明亮的色彩，大眼睛，友好的表情，适合制作手机壳、钥匙扣等周边产品。需要确保生成的IP形象完整，包含完整的身体和四肢';
       }
 
       let imageToSend: File | string;
@@ -522,13 +522,46 @@ export default function HeroSection() {
             {generatedResult ? (
               /* Generated IP Character */
               <>
-                <div className="relative">
+                <div className="relative w-full h-[420px] rounded-2xl overflow-hidden shadow-2xl">
                   <img
                     src={generatedResult.url}
                     alt="生成的IP形象"
-                    className="w-full h-auto rounded-2xl shadow-2xl max-h-[420px] object-contain"
+                    className="w-full h-full object-cover"
                   />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent rounded-2xl pointer-events-none" />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent pointer-events-none" />
+                  
+                  {/* 装饰图标层 */}
+                  <div className="absolute inset-0 pointer-events-none">
+                    {/* 左上角星星 */}
+                    <div className="absolute top-4 left-4 w-8 h-8 bg-yellow-200/90 rounded-full flex items-center justify-center shadow-lg animate-pulse">
+                      <span className="text-lg">✨</span>
+                    </div>
+                    
+                    {/* 右上角心形 */}
+                    <div className="absolute top-6 right-6 w-9 h-9 bg-pink-200/90 rounded-full flex items-center justify-center shadow-lg animate-bounce" style={{animationDelay: '0.5s'}}>
+                      <span className="text-lg">💖</span>
+                    </div>
+                    
+                    {/* 左下角彩虹 */}
+                    <div className="absolute bottom-8 left-6 w-8 h-8 bg-blue-200/90 rounded-full flex items-center justify-center shadow-lg animate-pulse" style={{animationDelay: '1s'}}>
+                      <span className="text-lg">🌈</span>
+                    </div>
+                    
+                    {/* 右下角皇冠 */}
+                    <div className="absolute bottom-4 right-4 w-7 h-7 bg-purple-200/90 rounded-full flex items-center justify-center shadow-lg animate-bounce" style={{animationDelay: '1.5s'}}>
+                      <span className="text-sm">👑</span>
+                    </div>
+                    
+                    {/* 右侧蝴蝶 */}
+                    <div className="absolute top-1/2 right-2 w-7 h-7 bg-orange-200/90 rounded-full flex items-center justify-center shadow-lg animate-pulse transform -translate-y-1/2" style={{animationDelay: '2s'}}>
+                      <span className="text-sm">🦋</span>
+                    </div>
+                    
+                    {/* 左侧火箭 */}
+                    <div className="absolute top-1/3 left-2 w-6 h-6 bg-green-200/90 rounded-full flex items-center justify-center shadow-lg animate-bounce" style={{animationDelay: '0.3s'}}>
+                      <span className="text-xs">🚀</span>
+                    </div>
+                  </div>
                 </div>
                 {/* 操作按钮区域：图片下方64px间距，块级独立，宽度与图片对齐 */}
                 <div className="flex flex-row justify-center items-center gap-6 px-8 py-6 bg-white rounded-3xl shadow-2xl border border-gray-100 mt-20 mx-auto max-w-lg" style={{marginTop:'80px'}}>

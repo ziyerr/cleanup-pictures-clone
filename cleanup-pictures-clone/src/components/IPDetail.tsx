@@ -370,12 +370,45 @@ export default function IPDetail({ ipCharacter, onBack, onUpdate }: IPDetailProp
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           {/* Main Image */}
           <div className="space-y-6">
-            <div className="aspect-square bg-gray-100 rounded-2xl overflow-hidden">
+            <div className="relative aspect-square bg-gray-100 rounded-2xl overflow-hidden">
               <IPImage
                 src={ipCharacter.main_image_url}
                 alt={ipCharacter.name}
                 className="w-full h-full object-cover"
               />
+              
+              {/* 随机装饰图标 */}
+              <div className="absolute inset-0 pointer-events-none">
+                {/* 图标1 - 左上角 */}
+                <div className="absolute top-4 left-4 w-8 h-8 bg-yellow-100 rounded-full flex items-center justify-center shadow-lg transform rotate-12">
+                  <span className="text-lg">✨</span>
+                </div>
+                
+                {/* 图标2 - 右上角 */}
+                <div className="absolute top-6 right-6 w-10 h-10 bg-pink-100 rounded-full flex items-center justify-center shadow-lg transform -rotate-12">
+                  <span className="text-xl">🎨</span>
+                </div>
+                
+                {/* 图标3 - 左下角 */}
+                <div className="absolute bottom-8 left-6 w-9 h-9 bg-blue-100 rounded-full flex items-center justify-center shadow-lg transform rotate-45">
+                  <span className="text-lg">🎭</span>
+                </div>
+                
+                {/* 图标4 - 右下角 */}
+                <div className="absolute bottom-4 right-4 w-7 h-7 bg-green-100 rounded-full flex items-center justify-center shadow-lg transform -rotate-45">
+                  <span className="text-sm">🎪</span>
+                </div>
+                
+                {/* 图标5 - 右侧中间 */}
+                <div className="absolute top-1/2 right-2 w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center shadow-lg transform rotate-90 -translate-y-1/2">
+                  <span className="text-lg">🎀</span>
+                </div>
+                
+                {/* 图标6 - 左侧中间 */}
+                <div className="absolute top-1/3 left-2 w-6 h-6 bg-orange-100 rounded-full flex items-center justify-center shadow-lg transform -rotate-30">
+                  <span className="text-sm">⭐</span>
+                </div>
+              </div>
             </div>
             
             {/* Multi-view Images */}

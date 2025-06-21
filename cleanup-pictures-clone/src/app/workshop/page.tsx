@@ -199,11 +199,55 @@ export default function WorkshopPage() {
       : '首次连接可能需要几秒钟，请稍候';
     
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-cleanup-green mx-auto mb-4"></div>
-          <p className="text-gray-600">{message}</p>
-          <p className="text-gray-400 text-sm mt-2">{subMessage}</p>
+      <div className="min-h-screen bg-gradient-to-br from-cleanup-green/5 via-blue-50 to-purple-50 flex items-center justify-center relative overflow-hidden">
+        {/* Background decorations */}
+        <div className="absolute inset-0 bg-grid-pattern opacity-5"></div>
+        <div className="absolute top-20 left-20 w-32 h-32 bg-cleanup-green/10 rounded-full blur-3xl"></div>
+        <div className="absolute bottom-20 right-20 w-40 h-40 bg-blue-400/10 rounded-full blur-3xl"></div>
+        <div className="absolute top-1/2 left-1/3 w-24 h-24 bg-purple-400/10 rounded-full blur-2xl"></div>
+        
+        <div className="relative z-10 text-center max-w-md mx-4">
+          {/* Logo and brand */}
+          <div className="mb-8">
+            <div className="flex items-center justify-center h-16 px-6 bg-gray-900 rounded-2xl mx-auto w-fit shadow-xl">
+              <span className="text-white font-bold text-xl tracking-wider">popverse.ai</span>
+            </div>
+          </div>
+          
+          {/* Loading animation */}
+          <div className="relative mb-8">
+            <div className="w-20 h-20 mx-auto relative">
+              {/* Outer ring */}
+              <div className="absolute inset-0 rounded-full border-4 border-cleanup-green/20"></div>
+              {/* Spinning ring */}
+              <div className="absolute inset-0 rounded-full border-4 border-transparent border-t-cleanup-green animate-spin"></div>
+              {/* Inner dot */}
+              <div className="absolute inset-4 rounded-full bg-cleanup-green/20 animate-pulse"></div>
+              {/* Center dot */}
+              <div className="absolute inset-6 rounded-full bg-cleanup-green animate-bounce"></div>
+            </div>
+          </div>
+          
+          {/* Content */}
+          <div className="space-y-4">
+            <h2 className="text-2xl font-bold text-gray-900">
+              {userLoading ? '验证身份中' : '加载工坊数据'}
+            </h2>
+            <p className="text-lg text-gray-700 font-medium">{message}</p>
+            <p className="text-sm text-gray-500 leading-relaxed">{subMessage}</p>
+            
+            {/* Progress indicator */}
+            <div className="mt-6">
+              <div className="flex items-center justify-center space-x-2 text-xs text-gray-400">
+                <div className="flex space-x-1">
+                  <div className="w-2 h-2 bg-cleanup-green rounded-full animate-pulse"></div>
+                  <div className="w-2 h-2 bg-cleanup-green/60 rounded-full animate-pulse" style={{animationDelay: '0.2s'}}></div>
+                  <div className="w-2 h-2 bg-cleanup-green/40 rounded-full animate-pulse" style={{animationDelay: '0.4s'}}></div>
+                </div>
+                <span className="ml-2">正在为您准备专属IP工坊</span>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     );

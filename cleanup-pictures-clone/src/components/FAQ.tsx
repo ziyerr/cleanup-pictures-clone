@@ -103,12 +103,18 @@ export default function FAQ() {
               我们的客服团队随时为您解答疑问
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <button className="bg-black text-white px-6 py-3 rounded-full font-medium hover:bg-gray-800 transition-colors">
-                在线客服
-              </button>
-              <button className="bg-white text-black px-6 py-3 rounded-full font-medium hover:bg-gray-100 transition-colors border border-black/20">
+              <a
+                href="mailto:zhangjunfei@mahuakeji.com?subject=在线客服咨询&body=您好，我需要咨询以下问题："
+                className="bg-black text-white px-6 py-3 rounded-full font-medium hover:bg-gray-800 transition-colors text-center"
+              >
+                联系客服
+              </a>
+              <a
+                href="mailto:zhangjunfei@mahuakeji.com?subject=产品咨询&body=您好，我想了解更多关于Popverse.ai的信息："
+                className="bg-white text-black px-6 py-3 rounded-full font-medium hover:bg-gray-100 transition-colors border border-black/20 text-center"
+              >
                 发送邮件
-              </button>
+              </a>
             </div>
           </div>
         </div>

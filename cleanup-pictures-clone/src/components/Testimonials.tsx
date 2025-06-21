@@ -41,9 +41,11 @@ export default function Testimonials() {
           <div className="flex flex-col lg:flex-row items-center lg:items-start gap-6">
             {/* Profile Image */}
             <div className="flex-shrink-0">
-              <div className="w-24 h-24 lg:w-32 lg:h-32 rounded-full bg-gradient-to-br from-blue-400 to-purple-600 flex items-center justify-center shadow-lg">
-                <span className="text-white font-bold text-2xl">王</span>
-              </div>
+              <img
+                src="/testimonials/designer-avatar.jpeg"
+                alt="王设计师"
+                className="w-24 h-24 lg:w-32 lg:h-32 rounded-full object-cover border-4 border-gray-100 shadow-lg"
+              />
             </div>
 
             {/* Quote Content */}

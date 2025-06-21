@@ -233,10 +233,10 @@ export default function Pricing() {
         'RESTful API接口',
         '专属技术支持'
       ],
-      buttonText: '联系客服',
+      buttonText: '了解合作方案',
       buttonStyle: 'outline',
       isEnterprise: true,
-      contactEmail: 'enterprise@popverse.ai'
+      contactEmail: 'zhangjunfei@mahuakeji.com'
     }
   ];
 
@@ -433,10 +433,10 @@ export default function Pricing() {
                 <div className="text-center mt-auto">
                   {plan.isEnterprise ? (
                     <a
-                      href={`mailto:${plan.contactEmail}?subject=API企业版咨询&body=您好，我想了解API企业版的详细信息和报价。`}
+                      href={`mailto:${plan.contactEmail}?subject=企业合作方案咨询&body=您好，我想了解企业合作方案的详细信息和报价。请您联系我讨论合作可能性。`}
                       className={`inline-block w-full rounded-full py-3 px-6 font-medium transition-all text-center bg-purple-600 text-white hover:bg-purple-700 border-purple-600`}
                     >
-                      {plan.buttonText}
+                      了解合作方案
                     </a>
                   ) : (() => {
                     const buttonInfo = getButtonInfo(plan);
@@ -496,8 +496,8 @@ export default function Pricing() {
             <div className="mt-6 pt-4 border-t border-gray-200 text-sm text-gray-600">
               <p>
                 <strong>企业版咨询:</strong>
-                <a href="mailto:enterprise@popverse.ai" className="text-cleanup-green hover:underline ml-1">
-                  enterprise@popverse.ai
+                <a href="mailto:zhangjunfei@mahuakeji.com" className="text-cleanup-green hover:underline ml-1">
+                  zhangjunfei@mahuakeji.com
                 </a>
               </p>
             </div>

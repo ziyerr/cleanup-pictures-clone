@@ -4,7 +4,8 @@
       "Bash(npm run dev:*)",
       "Bash(lsof:*)",
       "Bash(pkill:*)",
-      "Bash(npm run build:*)"
+      "Bash(npm run build:*)",
+      "WebFetch(domain:doc.apicore.ai)"
     ],
     "deny": []
   }

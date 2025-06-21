@@ -1,0 +1,14 @@
+{
+	"folders": [
+		{
+			"path": "../../../../../../../mksaas_popverse"
+		},
+		{
+			"path": "../../../.."
+		}
+	],
+	"settings": {
+		"i18n-ally.keystyle": "nested",
+		"Codegeex.RepoIndex": true
+	}
+}
