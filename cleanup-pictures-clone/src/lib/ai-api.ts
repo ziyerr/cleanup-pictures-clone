@@ -511,14 +511,25 @@ const tryAPICall = async (config: typeof ALTERNATIVE_CONFIGS[0], prompt: string,
         imageBase64 = `data:${mimeType};base64,${base64}`;
       }
 
-      // 根据APICore文档格式构建请求体
+      // 根据APICore文档格式构建请求体 - 使用标准OpenAI Chat格式
       requestBody = {
         stream: false,
         model: config.model,
         messages: [
           {
             role: "user",
-            content: `${prompt}\n\n[IMAGE]${imageBase64}[/IMAGE]`
+            content: [
+              {
+                type: "text",
+                text: prompt
+              },
+              {
+                type: "image_url",
+                image_url: {
+                  url: imageBase64
+                }
+              }
+            ]
           }
         ]
       };
@@ -692,12 +703,15 @@ export const generateIPCharacter = async (request: AIGenerationRequest): Promise
 
 // Helper to call Sparrow API for 2D图生2D图 tasks using gpt-4o-image
 // 强制使用gpt-4o-image模型进行周边图生成
+// 异步函数，用于触发 Sparrow 生成
 async function triggerSparrowGeneration(prompt: string, imageUrl?: string) {
+  // 如果没有提供 imageUrl，抛出错误
   if (!imageUrl) {
     throw new Error('2D图生2D图功能必须提供基础IP形象图作为输入');
   }
 
   try {
+    // 强制使用gpt-4o-image模型生成周边图
     console.log('🎨 强制使用gpt-4o-image模型生成周边图');
     console.log('正在获取基础IP形象图:', imageUrl);
     
@@ -720,20 +734,29 @@ async function triggerSparrowGeneration(prompt: string, imageUrl?: string) {
 
     console.log('✅ 基础IP形象图已准备完成');
 
-    // 强制构建gpt-4o-image的请求格式，确保使用图生图功能
+    // 强制构建gpt-4o-image的请求格式，确保使用图生图功能 - 使用标准OpenAI Chat格式
     const requestBody = {
       stream: false,
       model: 'gpt-4o-image', // 强制指定gpt-4o-image模型
       messages: [
         {
           role: "user",
-          content: `使用提供的IP形象图片作为参考，${prompt}。要求：
+          content: [
+            {
+              type: "text",
+              text: `使用提供的IP形象图片作为参考，${prompt}。要求：
 1. 保持IP形象的核心特征和风格
 2. 根据周边类型调整设计布局
 3. 确保商品化效果良好
-4. 生成高质量的产品设计图
-
-参考图片：[IMAGE]${imageBase64}[/IMAGE]`
+4. 生成高质量的产品设计图`
+            },
+            {
+              type: "image_url",
+              image_url: {
+                url: imageBase64
+              }
+            }
+          ]
         }
       ]
     };

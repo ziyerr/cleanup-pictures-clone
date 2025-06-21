@@ -187,6 +187,35 @@
 - [x] 修改应用场景默认标签：从"个人用户"改为"创意设计师"
   - 文件：`src/components/UseCases.tsx`
   - 修改时间: 2024年12月19日 14:52
+- [x] **重大修复：gpt-4o-image API调用格式**
+  - 问题：API调用异常，返回空对象 `{}`
+  - 原因：图片传递格式不符合APICore标准
+  - 修复：将字符串拼接格式改为标准OpenAI Chat格式
+  - 文件：`src/lib/ai-api.ts` (tryAPICall & triggerSparrowGeneration函数)
+  - 参考文档：[APICore gpt-4o-image文档](https://doc.apicore.ai/api-301177866)
+  - 修复时间: 2024年12月19日 15:05
+  
+### API修复详情
+**修复前（错误格式）：**
+```javascript
+content: `${prompt}\n\n[IMAGE]${imageBase64}[/IMAGE]`
+```
+
+**修复后（正确格式）：**
+```javascript
+content: [
+  {
+    type: "text",
+    text: prompt
+  },
+  {
+    type: "image_url", 
+    image_url: {
+      url: imageBase64
+    }
+  }
+]
+```
 
 ---
 **更新时间**: 2024年12月19日 14:48
