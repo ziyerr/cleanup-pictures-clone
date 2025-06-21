@@ -195,29 +195,33 @@
   - 文件：`src/lib/ai-api.ts` (tryAPICall & triggerSparrowGeneration函数)
   - 参考文档：[APICore gpt-4o-image文档](https://doc.apicore.ai/api-301177866)
   - 修复时间: 2024年12月19日 15:05
-  
-### API修复详情
-**修复前（错误格式）：**
-```javascript
-content: `${prompt}\n\n[IMAGE]${imageBase64}[/IMAGE]`
-```
+- [x] **环境变量修复：添加缺失的AI_API_KEY**
+  - 问题："所有API配置都失败"的根本原因
+  - 修复：添加 `AI_API_KEY=sk-DudMcfHfR2LzzePep763GUhx9I5594RAciiegxG4EgrpGmos`
+  - 文件：`.env.local`
+  - 修复时间: 2024年12月19日 15:15
+- [x] **Next.js 15 兼容性修复：cookies() API**
+  - 问题：`cookies()` should be awaited before using its value
+  - 修复：将同步cookies调用改为async/await模式  
+  - 文件：`src/app/api/subscription/route.ts`
+  - 修复时间: 2024年12月19日 15:16
 
-**修复后（正确格式）：**
-```javascript
-content: [
-  {
-    type: "text",
-    text: prompt
-  },
-  {
-    type: "image_url", 
-    image_url: {
-      url: imageBase64
-    }
-  }
-]
-```
+## ⚠️ 发现的问题
 
----
-**更新时间**: 2024年12月19日 14:48
-**状态**: 🟢 项目正在运行 
+### API故障转移配置不足
+- **问题**：当前只有1个API配置，故障转移能力有限
+- **影响**：单点故障，一旦主API失败就会出现"所有API配置都失败"错误
+- **建议**：添加多个备用API配置以提高可用性
+
+**错误触发条件：**
+1. 网络连接问题（无法访问api.apicore.ai）
+2. API密钥无效或配额不足  
+3. gpt-4o-image模型暂时不可用
+4. 服务器返回4xx/5xx错误
+5. 响应格式无法解析
+
+**建议改进：**
+- 添加备用API端点
+- 增加重试机制
+- 优化错误提示信息
+- 添加本地缓存机制 
