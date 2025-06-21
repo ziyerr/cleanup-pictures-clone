@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { Share2, Download, Edit, Trash2, Eye, ExternalLink, Play, Pencil, Check, Loader2 as Loader, AlertCircle, Wand2 } from 'lucide-react';
 import type { UserIPCharacter } from '../lib/supabase';
 import MerchandiseGenerationModal from './MerchandiseGenerationModal';
@@ -35,6 +35,7 @@ export default function IPDetail({ ipCharacter, onBack, onUpdate }: IPDetailProp
   const [isGenerating, setIsGenerating] = useState(false);
   const [pendingTasks, setPendingTasks] = useState<any[]>([]);
   const [networkError, setNetworkError] = useState<string | null>(null);
+  const fetchStatusRef = useRef<() => Promise<void>>();
 
   const fetchStatus = useCallback(async () => {
     try {
@@ -84,24 +85,24 @@ export default function IPDetail({ ipCharacter, onBack, onUpdate }: IPDetailProp
         onUpdate(data);
       }
       
-      // 清理已完成的临时任务
-      setPendingTasks(prev => {
-        const currentMerchandiseTypes = data.merchandise_urls ? Object.keys(data.merchandise_urls) : [];
-        const filteredTasks = prev.filter(task => {
-          if (task.id.startsWith('temp_')) {
-            // 检查临时任务对应的商品是否已完成
-            const isCompleted = currentMerchandiseTypes.some(type => 
-              task.prompt?.includes(type) || task.prompt?.toLowerCase().includes(type.toLowerCase())
-            );
-            if (isCompleted) {
-              console.log('IPDetail - 清理已完成的临时任务:', task.id);
-              return false;
+      // 清理已完成的临时任务 - 简化逻辑
+      if (data.merchandise_urls && Object.keys(data.merchandise_urls).length > 0) {
+        const currentMerchandiseTypes = Object.keys(data.merchandise_urls);
+        setPendingTasks(prev => {
+          const filteredTasks = prev.filter(task => {
+            if (task.id.startsWith('temp_')) {
+              // 临时任务存在5分钟后自动清理
+              const taskAge = Date.now() - new Date(task.created_at).getTime();
+              if (taskAge > 5 * 60 * 1000) {
+                console.log('IPDetail - 清理过期的临时任务:', task.id);
+                return false;
+              }
             }
-          }
-          return true;
+            return true;
+          });
+          return filteredTasks;
         });
-        return filteredTasks;
-      });
+      }
     } catch (error) {
       console.error('获取IP状态失败:', error);
       
@@ -114,7 +115,12 @@ export default function IPDetail({ ipCharacter, onBack, onUpdate }: IPDetailProp
       
       setCharacterStatus(null); // Set to null on error to show error state
     }
-  }, [ipCharacter.id, onUpdate]);
+  }, [ipCharacter.id]); // 移除 onUpdate 依赖，避免循环
+
+  // 将 fetchStatus 保存到 ref 中
+  useEffect(() => {
+    fetchStatusRef.current = fetchStatus;
+  }, [fetchStatus]);
 
   // Effect for initial load
   useEffect(() => {
@@ -122,7 +128,7 @@ export default function IPDetail({ ipCharacter, onBack, onUpdate }: IPDetailProp
     fetchStatus().finally(() => setIsLoading(false));
   }, [fetchStatus]);
 
-  // Effect for polling
+  // Effect for polling - 使用稳定的依赖数组
   useEffect(() => {
     const hasActiveTasks = pendingTasks.length > 0;
     const shouldPoll = characterStatus?.initial_task_status !== 'completed' || 
@@ -144,14 +150,16 @@ export default function IPDetail({ ipCharacter, onBack, onUpdate }: IPDetailProp
 
     const intervalId = setInterval(() => {
       console.log('IPDetail - 执行定时轮询 (包含任务检查)');
-      fetchStatus();
-    }, 3000); // Poll every 3 seconds when there are active tasks
+      if (fetchStatusRef.current) {
+        fetchStatusRef.current();
+      }
+    }, 5000); // Poll every 5 seconds when there are active tasks
 
     return () => {
       console.log('IPDetail - 清除轮询定时器');
       clearInterval(intervalId);
     };
-  }, [characterStatus, fetchStatus, isLoading, pendingTasks.length]);
+  }, [characterStatus?.initial_task_status, characterStatus?.merchandise_task_status, pendingTasks.length, isLoading]);
 
   const handleShare = () => {
     const shareUrl = `${window.location.origin}/workshop/shared/${ipCharacter.id}`;
@@ -323,8 +331,10 @@ export default function IPDetail({ ipCharacter, onBack, onUpdate }: IPDetailProp
       // 异步刷新状态，带重试机制
       const retryFetchStatus = async (retryCount = 0) => {
         try {
-          await fetchStatus();
-          console.log('IPDetail - 状态刷新成功 (重试次数:', retryCount, ')');
+          if (fetchStatusRef.current) {
+            await fetchStatusRef.current();
+            console.log('IPDetail - 状态刷新成功 (重试次数:', retryCount, ')');
+          }
         } catch (error) {
           console.warn('IPDetail - 状态刷新失败:', error);
           if (retryCount < 2) {
@@ -334,7 +344,8 @@ export default function IPDetail({ ipCharacter, onBack, onUpdate }: IPDetailProp
         }
       };
       
-      retryFetchStatus();
+      // 延迟刷新，避免立即执行影响UI
+      setTimeout(() => retryFetchStatus(), 500);
 
       // 显示更好的成功反馈
       const successMessage = `✅ 成功启动"${merchandiseData.name}"的生成任务！\n\n任务已提交，预计2-5分钟完成。您可以在下方查看生成进度。`;
