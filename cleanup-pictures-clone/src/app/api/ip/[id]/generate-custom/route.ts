@@ -25,8 +25,16 @@ export async function POST(
     }
 
     // Create authenticated Supabase client
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://wrfvysakckcmvquvwuei.supabase.co';
-    const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndyZnZ5c2FrY2tjbXZxdXZ3dWVpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDk0MDEzMDEsImV4cCI6MjA2NDk3NzMwMX0.LgQHwS9rbcmTfL2SegtcDByDTxWqraKMcXRQBPMtYJw';
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+    const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+    
+    console.log('API generate-custom: 环境变量检查', {
+      hasUrl: !!supabaseUrl,
+      hasKey: !!supabaseAnonKey,
+      userId,
+      characterId,
+      hasAuth: !!authHeader
+    });
     
     const supabase = createClient(supabaseUrl, supabaseAnonKey, {
       global: {

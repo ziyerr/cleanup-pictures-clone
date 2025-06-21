@@ -117,13 +117,24 @@ export function UserProvider({ children }: { children: ReactNode }) {
 
   const logout = async () => {
     try {
-      // 清除Supabase session
-      const { error } = await supabase.auth.signOut();
+      // 设置强制重授权标记
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('forceReauth', 'true');
+        console.log('已设置强制重授权标记');
+      }
+      
+      // 全局登出：清除所有OAuth提供商的会话和cookies
+      const { error } = await supabase.auth.signOut({ scope: 'global' });
       if (error) {
         console.error('登出错误:', error);
       } else {
-        console.log('用户已登出');
+        console.log('用户已登出（将在下次登录时强制重新授权）');
       }
+      
+      // 额外清除可能残留的认证相关cookies
+      document.cookie.split(";").forEach(function(c) { 
+        document.cookie = c.replace(/^ +/, "").replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/"); 
+      });
       
       // 用户状态会通过onAuthStateChange自动清除
     } catch (error) {

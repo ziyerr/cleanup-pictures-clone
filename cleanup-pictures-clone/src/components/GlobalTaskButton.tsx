@@ -97,6 +97,7 @@ export default function GlobalTaskButton() {
           'x-user-id': currentUser.id,
           'Authorization': `Bearer ${authToken}`,
         },
+        signal: AbortSignal.timeout(10000) // 10秒超时
       });
 
       if (response.ok) {
@@ -113,9 +114,16 @@ export default function GlobalTaskButton() {
           };
           saveNotificationState(newState);
         }
+      } else {
+        console.warn('任务摘要API响应错误:', response.status);
       }
     } catch (error) {
       console.error('获取任务摘要失败:', error);
+      
+      // 网络错误时不重试，避免频繁请求
+      if (error instanceof Error && error.message.includes('Failed to fetch')) {
+        console.warn('任务摘要网络连接失败，将在下次定时刷新时重试');
+      }
     } finally {
       setIsLoading(false);
     }
@@ -157,7 +165,7 @@ export default function GlobalTaskButton() {
   const shouldShowBadge = () => {
     // 用户未登录，不显示
     if (!currentUser) return false;
-    
+
     // 没有任务，不显示
     if (taskSummary.total === 0) return false;
     

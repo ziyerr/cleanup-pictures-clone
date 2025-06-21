@@ -41,16 +41,31 @@ export default function Pricing() {
     }
   }, [currentUser]);
 
-  const fetchUserSubscription = async () => {
+  const fetchUserSubscription = async (retryCount = 0) => {
     try {
-      const response = await fetch('/api/subscription');
+      console.log(`获取订阅信息 (尝试 ${retryCount + 1})`);
+      
+      const response = await fetch('/api/subscription', {
+        signal: AbortSignal.timeout(10000) // 10秒超时
+      });
+      
       if (response.ok) {
         const data = await response.json();
         setUserSubscription(data.subscription);
         setUserQuota(data.quota);
+      } else {
+        console.warn('订阅信息API响应错误:', response.status);
       }
     } catch (error) {
       console.error('获取订阅信息失败:', error);
+      
+      // 网络错误重试
+      if (error instanceof Error && error.message.includes('Failed to fetch') && retryCount < 3) {
+        console.log(`订阅信息网络错误，${1000 * (retryCount + 1)}ms后重试...`);
+        setTimeout(() => {
+          fetchUserSubscription(retryCount + 1);
+        }, 1000 * (retryCount + 1));
+      }
     }
   };
 

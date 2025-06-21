@@ -398,4 +398,2746 @@
 **布局优化：**
 - 图片容器从 `object-contain` 改为 `object-cover` 
 - 固定高度 420px，确保一致的视觉效果
-- 装饰图标层叠在图片之上，不影响核心内容 
+- 装饰图标层叠在图片之上，不影响核心内容
+
+### 智能通知徽章详情
+**核心设计理念：**
+- **Progressive Disclosure（渐进式披露）**：只在必要时显示信息
+- **State Management（状态管理）**：跟踪用户的阅读状态
+- **Context Awareness（上下文感知）**：根据用户当前行为调整
+- **User Intent Recognition（用户意图识别）**：理解用户访问意图
+
+**显示逻辑：**
+1. 有处理中任务 → 始终显示（蓝色，旋转图标）
+2. 有失败任务 → 始终显示（红色，警告图标）
+3. 有未读完成任务 → 显示（绿色，完成图标）
+4. 所有任务已读且无新活动 → 隐藏
+
+**状态持久化：**
+- 基于localStorage存储用户级别的通知状态
+- 跟踪最后阅读时间戳和已读完成任务数量
+- 检测任务数量变化，自动重置状态
+
+**用户行为响应：**
+- 访问/tasks页面 → 自动标记当前完成任务为已读
+- 点击徽章 → 立即标记为已读并跳转
+- 路由变化监听 → 实时检测用户访问意图
+
+## 🎯 下一步计划
+- [ ] 检查项目功能是否正常
+- [ ] 确认Supabase连接状态
+- [ ] 测试主要功能模块
+- [ ] 优化服务器端渲染性能（如果需要）
+
+## 📝 最近修改
+- [x] 修改应用场景默认标签：从"个人用户"改为"创意设计师"
+  - 文件：`src/components/UseCases.tsx`
+  - 修改时间: 2024年12月19日 14:52
+- [x] **重大修复：gpt-4o-image API调用格式**
+  - 问题：API调用异常，返回空对象 `{}`
+  - 原因：图片传递格式不符合APICore标准
+  - 修复：将字符串拼接格式改为标准OpenAI Chat格式
+  - 文件：`src/lib/ai-api.ts` (tryAPICall & triggerSparrowGeneration函数)
+  - 参考文档：[APICore gpt-4o-image文档](https://doc.apicore.ai/api-301177866)
+  - 修复时间: 2024年12月19日 15:05
+- [x] **环境变量修复：添加缺失的AI_API_KEY**
+  - 问题："所有API配置都失败"的根本原因
+  - 修复：添加 `AI_API_KEY=sk-DudMcfHfR2LzzePep763GUhx9I5594RAciiegxG4EgrpGmos`
+  - 文件：`.env.local`
+  - 修复时间: 2024年12月19日 15:15
+- [x] **Next.js 15 兼容性修复：cookies() API**
+  - 问题：`cookies()` should be awaited before using its value
+  - 修复：将同步cookies调用改为async/await模式  
+  - 文件：`src/app/api/subscription/route.ts`
+  - 修复时间: 2024年12月19日 15:16
+- [x] **UI优化：IP形象展示页面效果改进**
+  - 优化1：IP效果图撑满容器，去除左右留白
+  - 优化2：添加随机装饰图标，始终跟随IP效果图
+  - 优化3：增加动画效果，提升视觉体验
+  - 文件：`src/components/IPDetail.tsx` & `src/components/HeroSection.tsx`
+  - 修改时间: 2024年12月19日 16:20
+- [x] **智能任务通知徽章优化 - Smart Notification Badge**
+  - 功能1：进入任务列表页面后自动清空完成任务提醒
+  - 功能2：没有未读和没有进行中任务时智能隐藏徽章
+  - 功能3：引入已读状态管理，基于localStorage持久化
+  - 最佳实践：Progressive Disclosure, Context Awareness, User Intent Recognition
+  - 文件：`src/components/GlobalTaskButton.tsx`
+  - 修改时间: 2024年12月19日 16:50
+- [x] **🎨 装饰图标精简优化**
+  - 需求：只保留4个核心产品图标（钥匙扣/手机壳/衣服/30+）
+  - 优化1：移除多余装饰图标，从6+个减少到4个核心产品
+  - 优化2：手机壳图标移至IP图片边缘，而非按键框下方
+  - 优化3：保持产品图标的hover缩放效果和边框样式
+  - 文件：`src/components/IPDetail.tsx` & `src/components/HeroSection.tsx`
+  - 修改时间: 2024年12月19日 17:20
+- [x] **✨ 保存按钮动效优化**
+  - 功能：为"保存IP形象"按钮添加微微跳动动效
+  - 效果：鼓励用户点击，提升转化率
+  - 实现：自定义gentle-bounce动画，2秒循环，优雅不突兀
+  - 细节：保存中时禁用动画，hover时切换为bounce效果
+  - 文件：`src/components/HeroSection.tsx` & `src/app/globals.css`
+  - 修改时间: 2024年12月19日 17:20
+- [x] **🎨 图标悬浮位置优化**
+  - 问题：图标嵌入在图片内部，视觉效果不佳
+  - 解决：图标改为悬浮在图片边缘外，真正的"悬浮"效果
+  - 调整1：手机壳图标从左上角下移120px，避免与30+重叠
+  - 调整2：衣服图标从右下角上移120px，平衡布局
+  - 调整3：增强阴影效果(shadow-xl)，突出悬浮感
+  - 调整4：钥匙扣和30+保持角落位置，形成视觉锚点
+  - 文件：`src/components/IPDetail.tsx` & `src/components/HeroSection.tsx`
+  - 修改时间: 2024年12月19日 17:40
+
+### UI改进详情
+**装饰图标系统：**
+- IP详情页：6个随机位置的静态图标（✨🎨🎭🎪🎀⭐）
+- 生成结果页：6个带动画的装饰图标（✨💖🌈👑🦋🚀）
+- 外围产品图标：7个周边商品展示图标
+
+**布局优化：**
+- 图片容器从 `object-contain` 改为 `object-cover` 
+- 固定高度 420px，确保一致的视觉效果
+- 装饰图标层叠在图片之上，不影响核心内容
+
+### 智能通知徽章详情
+**核心设计理念：**
+- **Progressive Disclosure（渐进式披露）**：只在必要时显示信息
+- **State Management（状态管理）**：跟踪用户的阅读状态
+- **Context Awareness（上下文感知）**：根据用户当前行为调整
+- **User Intent Recognition（用户意图识别）**：理解用户访问意图
+
+**显示逻辑：**
+1. 有处理中任务 → 始终显示（蓝色，旋转图标）
+2. 有失败任务 → 始终显示（红色，警告图标）
+3. 有未读完成任务 → 显示（绿色，完成图标）
+4. 所有任务已读且无新活动 → 隐藏
+
+**状态持久化：**
+- 基于localStorage存储用户级别的通知状态
+- 跟踪最后阅读时间戳和已读完成任务数量
+- 检测任务数量变化，自动重置状态
+
+**用户行为响应：**
+- 访问/tasks页面 → 自动标记当前完成任务为已读
+- 点击徽章 → 立即标记为已读并跳转
+- 路由变化监听 → 实时检测用户访问意图
+
+## 🎯 下一步计划
+- [ ] 检查项目功能是否正常
+- [ ] 确认Supabase连接状态
+- [ ] 测试主要功能模块
+- [ ] 优化服务器端渲染性能（如果需要）
+
+## 📝 最近修改
+- [x] 修改应用场景默认标签：从"个人用户"改为"创意设计师"
+  - 文件：`src/components/UseCases.tsx`
+  - 修改时间: 2024年12月19日 14:52
+- [x] **重大修复：gpt-4o-image API调用格式**
+  - 问题：API调用异常，返回空对象 `{}`
+  - 原因：图片传递格式不符合APICore标准
+  - 修复：将字符串拼接格式改为标准OpenAI Chat格式
+  - 文件：`src/lib/ai-api.ts` (tryAPICall & triggerSparrowGeneration函数)
+  - 参考文档：[APICore gpt-4o-image文档](https://doc.apicore.ai/api-301177866)
+  - 修复时间: 2024年12月19日 15:05
+- [x] **环境变量修复：添加缺失的AI_API_KEY**
+  - 问题："所有API配置都失败"的根本原因
+  - 修复：添加 `AI_API_KEY=sk-DudMcfHfR2LzzePep763GUhx9I5594RAciiegxG4EgrpGmos`
+  - 文件：`.env.local`
+  - 修复时间: 2024年12月19日 15:15
+- [x] **Next.js 15 兼容性修复：cookies() API**
+  - 问题：`cookies()` should be awaited before using its value
+  - 修复：将同步cookies调用改为async/await模式  
+  - 文件：`src/app/api/subscription/route.ts`
+  - 修复时间: 2024年12月19日 15:16
+- [x] **UI优化：IP形象展示页面效果改进**
+  - 优化1：IP效果图撑满容器，去除左右留白
+  - 优化2：添加随机装饰图标，始终跟随IP效果图
+  - 优化3：增加动画效果，提升视觉体验
+  - 文件：`src/components/IPDetail.tsx` & `src/components/HeroSection.tsx`
+  - 修改时间: 2024年12月19日 16:20
+- [x] **智能任务通知徽章优化 - Smart Notification Badge**
+  - 功能1：进入任务列表页面后自动清空完成任务提醒
+  - 功能2：没有未读和没有进行中任务时智能隐藏徽章
+  - 功能3：引入已读状态管理，基于localStorage持久化
+  - 最佳实践：Progressive Disclosure, Context Awareness, User Intent Recognition
+  - 文件：`src/components/GlobalTaskButton.tsx`
+  - 修改时间: 2024年12月19日 16:50
+- [x] **🎨 装饰图标精简优化**
+  - 需求：只保留4个核心产品图标（钥匙扣/手机壳/衣服/30+）
+  - 优化1：移除多余装饰图标，从6+个减少到4个核心产品
+  - 优化2：手机壳图标移至IP图片边缘，而非按键框下方
+  - 优化3：保持产品图标的hover缩放效果和边框样式
+  - 文件：`src/components/IPDetail.tsx` & `src/components/HeroSection.tsx`
+  - 修改时间: 2024年12月19日 17:20
+- [x] **✨ 保存按钮动效优化**
+  - 功能：为"保存IP形象"按钮添加微微跳动动效
+  - 效果：鼓励用户点击，提升转化率
+  - 实现：自定义gentle-bounce动画，2秒循环，优雅不突兀
+  - 细节：保存中时禁用动画，hover时切换为bounce效果
+  - 文件：`src/components/HeroSection.tsx` & `src/app/globals.css`
+  - 修改时间: 2024年12月19日 17:20
+- [x] **🎨 图标悬浮位置优化**
+  - 问题：图标嵌入在图片内部，视觉效果不佳
+  - 解决：图标改为悬浮在图片边缘外，真正的"悬浮"效果
+  - 调整1：手机壳图标从左上角下移120px，避免与30+重叠
+  - 调整2：衣服图标从右下角上移120px，平衡布局
+  - 调整3：增强阴影效果(shadow-xl)，突出悬浮感
+  - 调整4：钥匙扣和30+保持角落位置，形成视觉锚点
+  - 文件：`src/components/IPDetail.tsx` & `src/components/HeroSection.tsx`
+  - 修改时间: 2024年12月19日 17:40
+
+### UI改进详情
+**装饰图标系统：**
+- IP详情页：6个随机位置的静态图标（✨🎨🎭🎪🎀⭐）
+- 生成结果页：6个带动画的装饰图标（✨💖🌈👑🦋🚀）
+- 外围产品图标：7个周边商品展示图标
+
+**布局优化：**
+- 图片容器从 `object-contain` 改为 `object-cover` 
+- 固定高度 420px，确保一致的视觉效果
+- 装饰图标层叠在图片之上，不影响核心内容
+
+### 智能通知徽章详情
+**核心设计理念：**
+- **Progressive Disclosure（渐进式披露）**：只在必要时显示信息
+- **State Management（状态管理）**：跟踪用户的阅读状态
+- **Context Awareness（上下文感知）**：根据用户当前行为调整
+- **User Intent Recognition（用户意图识别）**：理解用户访问意图
+
+**显示逻辑：**
+1. 有处理中任务 → 始终显示（蓝色，旋转图标）
+2. 有失败任务 → 始终显示（红色，警告图标）
+3. 有未读完成任务 → 显示（绿色，完成图标）
+4. 所有任务已读且无新活动 → 隐藏
+
+**状态持久化：**
+- 基于localStorage存储用户级别的通知状态
+- 跟踪最后阅读时间戳和已读完成任务数量
+- 检测任务数量变化，自动重置状态
+
+**用户行为响应：**
+- 访问/tasks页面 → 自动标记当前完成任务为已读
+- 点击徽章 → 立即标记为已读并跳转
+- 路由变化监听 → 实时检测用户访问意图
+
+## 🎯 下一步计划
+- [ ] 检查项目功能是否正常
+- [ ] 确认Supabase连接状态
+- [ ] 测试主要功能模块
+- [ ] 优化服务器端渲染性能（如果需要）
+
+## 📝 最近修改
+- [x] 修改应用场景默认标签：从"个人用户"改为"创意设计师"
+  - 文件：`src/components/UseCases.tsx`
+  - 修改时间: 2024年12月19日 14:52
+- [x] **重大修复：gpt-4o-image API调用格式**
+  - 问题：API调用异常，返回空对象 `{}`
+  - 原因：图片传递格式不符合APICore标准
+  - 修复：将字符串拼接格式改为标准OpenAI Chat格式
+  - 文件：`src/lib/ai-api.ts` (tryAPICall & triggerSparrowGeneration函数)
+  - 参考文档：[APICore gpt-4o-image文档](https://doc.apicore.ai/api-301177866)
+  - 修复时间: 2024年12月19日 15:05
+- [x] **环境变量修复：添加缺失的AI_API_KEY**
+  - 问题："所有API配置都失败"的根本原因
+  - 修复：添加 `AI_API_KEY=sk-DudMcfHfR2LzzePep763GUhx9I5594RAciiegxG4EgrpGmos`
+  - 文件：`.env.local`
+  - 修复时间: 2024年12月19日 15:15
+- [x] **Next.js 15 兼容性修复：cookies() API**
+  - 问题：`cookies()` should be awaited before using its value
+  - 修复：将同步cookies调用改为async/await模式  
+  - 文件：`src/app/api/subscription/route.ts`
+  - 修复时间: 2024年12月19日 15:16
+- [x] **UI优化：IP形象展示页面效果改进**
+  - 优化1：IP效果图撑满容器，去除左右留白
+  - 优化2：添加随机装饰图标，始终跟随IP效果图
+  - 优化3：增加动画效果，提升视觉体验
+  - 文件：`src/components/IPDetail.tsx` & `src/components/HeroSection.tsx`
+  - 修改时间: 2024年12月19日 16:20
+- [x] **智能任务通知徽章优化 - Smart Notification Badge**
+  - 功能1：进入任务列表页面后自动清空完成任务提醒
+  - 功能2：没有未读和没有进行中任务时智能隐藏徽章
+  - 功能3：引入已读状态管理，基于localStorage持久化
+  - 最佳实践：Progressive Disclosure, Context Awareness, User Intent Recognition
+  - 文件：`src/components/GlobalTaskButton.tsx`
+  - 修改时间: 2024年12月19日 16:50
+- [x] **🎨 装饰图标精简优化**
+  - 需求：只保留4个核心产品图标（钥匙扣/手机壳/衣服/30+）
+  - 优化1：移除多余装饰图标，从6+个减少到4个核心产品
+  - 优化2：手机壳图标移至IP图片边缘，而非按键框下方
+  - 优化3：保持产品图标的hover缩放效果和边框样式
+  - 文件：`src/components/IPDetail.tsx` & `src/components/HeroSection.tsx`
+  - 修改时间: 2024年12月19日 17:20
+- [x] **✨ 保存按钮动效优化**
+  - 功能：为"保存IP形象"按钮添加微微跳动动效
+  - 效果：鼓励用户点击，提升转化率
+  - 实现：自定义gentle-bounce动画，2秒循环，优雅不突兀
+  - 细节：保存中时禁用动画，hover时切换为bounce效果
+  - 文件：`src/components/HeroSection.tsx` & `src/app/globals.css`
+  - 修改时间: 2024年12月19日 17:20
+- [x] **🎨 图标悬浮位置优化**
+  - 问题：图标嵌入在图片内部，视觉效果不佳
+  - 解决：图标改为悬浮在图片边缘外，真正的"悬浮"效果
+  - 调整1：手机壳图标从左上角下移120px，避免与30+重叠
+  - 调整2：衣服图标从右下角上移120px，平衡布局
+  - 调整3：增强阴影效果(shadow-xl)，突出悬浮感
+  - 调整4：钥匙扣和30+保持角落位置，形成视觉锚点
+  - 文件：`src/components/IPDetail.tsx` & `src/components/HeroSection.tsx`
+  - 修改时间: 2024年12月19日 17:40
+
+### UI改进详情
+**装饰图标系统：**
+- IP详情页：6个随机位置的静态图标（✨🎨🎭🎪🎀⭐）
+- 生成结果页：6个带动画的装饰图标（✨💖🌈👑🦋🚀）
+- 外围产品图标：7个周边商品展示图标
+
+**布局优化：**
+- 图片容器从 `object-contain` 改为 `object-cover` 
+- 固定高度 420px，确保一致的视觉效果
+- 装饰图标层叠在图片之上，不影响核心内容
+
+### 智能通知徽章详情
+**核心设计理念：**
+- **Progressive Disclosure（渐进式披露）**：只在必要时显示信息
+- **State Management（状态管理）**：跟踪用户的阅读状态
+- **Context Awareness（上下文感知）**：根据用户当前行为调整
+- **User Intent Recognition（用户意图识别）**：理解用户访问意图
+
+**显示逻辑：**
+1. 有处理中任务 → 始终显示（蓝色，旋转图标）
+2. 有失败任务 → 始终显示（红色，警告图标）
+3. 有未读完成任务 → 显示（绿色，完成图标）
+4. 所有任务已读且无新活动 → 隐藏
+
+**状态持久化：**
+- 基于localStorage存储用户级别的通知状态
+- 跟踪最后阅读时间戳和已读完成任务数量
+- 检测任务数量变化，自动重置状态
+
+**用户行为响应：**
+- 访问/tasks页面 → 自动标记当前完成任务为已读
+- 点击徽章 → 立即标记为已读并跳转
+- 路由变化监听 → 实时检测用户访问意图
+
+## 🎯 下一步计划
+- [ ] 检查项目功能是否正常
+- [ ] 确认Supabase连接状态
+- [ ] 测试主要功能模块
+- [ ] 优化服务器端渲染性能（如果需要）
+
+## 📝 最近修改
+- [x] 修改应用场景默认标签：从"个人用户"改为"创意设计师"
+  - 文件：`src/components/UseCases.tsx`
+  - 修改时间: 2024年12月19日 14:52
+- [x] **重大修复：gpt-4o-image API调用格式**
+  - 问题：API调用异常，返回空对象 `{}`
+  - 原因：图片传递格式不符合APICore标准
+  - 修复：将字符串拼接格式改为标准OpenAI Chat格式
+  - 文件：`src/lib/ai-api.ts` (tryAPICall & triggerSparrowGeneration函数)
+  - 参考文档：[APICore gpt-4o-image文档](https://doc.apicore.ai/api-301177866)
+  - 修复时间: 2024年12月19日 15:05
+- [x] **环境变量修复：添加缺失的AI_API_KEY**
+  - 问题："所有API配置都失败"的根本原因
+  - 修复：添加 `AI_API_KEY=sk-DudMcfHfR2LzzePep763GUhx9I5594RAciiegxG4EgrpGmos`
+  - 文件：`.env.local`
+  - 修复时间: 2024年12月19日 15:15
+- [x] **Next.js 15 兼容性修复：cookies() API**
+  - 问题：`cookies()` should be awaited before using its value
+  - 修复：将同步cookies调用改为async/await模式  
+  - 文件：`src/app/api/subscription/route.ts`
+  - 修复时间: 2024年12月19日 15:16
+- [x] **UI优化：IP形象展示页面效果改进**
+  - 优化1：IP效果图撑满容器，去除左右留白
+  - 优化2：添加随机装饰图标，始终跟随IP效果图
+  - 优化3：增加动画效果，提升视觉体验
+  - 文件：`src/components/IPDetail.tsx` & `src/components/HeroSection.tsx`
+  - 修改时间: 2024年12月19日 16:20
+- [x] **智能任务通知徽章优化 - Smart Notification Badge**
+  - 功能1：进入任务列表页面后自动清空完成任务提醒
+  - 功能2：没有未读和没有进行中任务时智能隐藏徽章
+  - 功能3：引入已读状态管理，基于localStorage持久化
+  - 最佳实践：Progressive Disclosure, Context Awareness, User Intent Recognition
+  - 文件：`src/components/GlobalTaskButton.tsx`
+  - 修改时间: 2024年12月19日 16:50
+- [x] **🎨 装饰图标精简优化**
+  - 需求：只保留4个核心产品图标（钥匙扣/手机壳/衣服/30+）
+  - 优化1：移除多余装饰图标，从6+个减少到4个核心产品
+  - 优化2：手机壳图标移至IP图片边缘，而非按键框下方
+  - 优化3：保持产品图标的hover缩放效果和边框样式
+  - 文件：`src/components/IPDetail.tsx` & `src/components/HeroSection.tsx`
+  - 修改时间: 2024年12月19日 17:20
+- [x] **✨ 保存按钮动效优化**
+  - 功能：为"保存IP形象"按钮添加微微跳动动效
+  - 效果：鼓励用户点击，提升转化率
+  - 实现：自定义gentle-bounce动画，2秒循环，优雅不突兀
+  - 细节：保存中时禁用动画，hover时切换为bounce效果
+  - 文件：`src/components/HeroSection.tsx` & `src/app/globals.css`
+  - 修改时间: 2024年12月19日 17:20
+- [x] **🎨 图标悬浮位置优化**
+  - 问题：图标嵌入在图片内部，视觉效果不佳
+  - 解决：图标改为悬浮在图片边缘外，真正的"悬浮"效果
+  - 调整1：手机壳图标从左上角下移120px，避免与30+重叠
+  - 调整2：衣服图标从右下角上移120px，平衡布局
+  - 调整3：增强阴影效果(shadow-xl)，突出悬浮感
+  - 调整4：钥匙扣和30+保持角落位置，形成视觉锚点
+  - 文件：`src/components/IPDetail.tsx` & `src/components/HeroSection.tsx`
+  - 修改时间: 2024年12月19日 17:40
+
+### UI改进详情
+**装饰图标系统：**
+- IP详情页：6个随机位置的静态图标（✨🎨🎭🎪🎀⭐）
+- 生成结果页：6个带动画的装饰图标（✨💖🌈👑🦋🚀）
+- 外围产品图标：7个周边商品展示图标
+
+**布局优化：**
+- 图片容器从 `object-contain` 改为 `object-cover` 
+- 固定高度 420px，确保一致的视觉效果
+- 装饰图标层叠在图片之上，不影响核心内容
+
+### 智能通知徽章详情
+**核心设计理念：**
+- **Progressive Disclosure（渐进式披露）**：只在必要时显示信息
+- **State Management（状态管理）**：跟踪用户的阅读状态
+- **Context Awareness（上下文感知）**：根据用户当前行为调整
+- **User Intent Recognition（用户意图识别）**：理解用户访问意图
+
+**显示逻辑：**
+1. 有处理中任务 → 始终显示（蓝色，旋转图标）
+2. 有失败任务 → 始终显示（红色，警告图标）
+3. 有未读完成任务 → 显示（绿色，完成图标）
+4. 所有任务已读且无新活动 → 隐藏
+
+**状态持久化：**
+- 基于localStorage存储用户级别的通知状态
+- 跟踪最后阅读时间戳和已读完成任务数量
+- 检测任务数量变化，自动重置状态
+
+**用户行为响应：**
+- 访问/tasks页面 → 自动标记当前完成任务为已读
+- 点击徽章 → 立即标记为已读并跳转
+- 路由变化监听 → 实时检测用户访问意图
+
+## 🎯 下一步计划
+- [ ] 检查项目功能是否正常
+- [ ] 确认Supabase连接状态
+- [ ] 测试主要功能模块
+- [ ] 优化服务器端渲染性能（如果需要）
+
+## 📝 最近修改
+- [x] 修改应用场景默认标签：从"个人用户"改为"创意设计师"
+  - 文件：`src/components/UseCases.tsx`
+  - 修改时间: 2024年12月19日 14:52
+- [x] **重大修复：gpt-4o-image API调用格式**
+  - 问题：API调用异常，返回空对象 `{}`
+  - 原因：图片传递格式不符合APICore标准
+  - 修复：将字符串拼接格式改为标准OpenAI Chat格式
+  - 文件：`src/lib/ai-api.ts` (tryAPICall & triggerSparrowGeneration函数)
+  - 参考文档：[APICore gpt-4o-image文档](https://doc.apicore.ai/api-301177866)
+  - 修复时间: 2024年12月19日 15:05
+- [x] **环境变量修复：添加缺失的AI_API_KEY**
+  - 问题："所有API配置都失败"的根本原因
+  - 修复：添加 `AI_API_KEY=sk-DudMcfHfR2LzzePep763GUhx9I5594RAciiegxG4EgrpGmos`
+  - 文件：`.env.local`
+  - 修复时间: 2024年12月19日 15:15
+- [x] **Next.js 15 兼容性修复：cookies() API**
+  - 问题：`cookies()` should be awaited before using its value
+  - 修复：将同步cookies调用改为async/await模式  
+  - 文件：`src/app/api/subscription/route.ts`
+  - 修复时间: 2024年12月19日 15:16
+- [x] **UI优化：IP形象展示页面效果改进**
+  - 优化1：IP效果图撑满容器，去除左右留白
+  - 优化2：添加随机装饰图标，始终跟随IP效果图
+  - 优化3：增加动画效果，提升视觉体验
+  - 文件：`src/components/IPDetail.tsx` & `src/components/HeroSection.tsx`
+  - 修改时间: 2024年12月19日 16:20
+- [x] **智能任务通知徽章优化 - Smart Notification Badge**
+  - 功能1：进入任务列表页面后自动清空完成任务提醒
+  - 功能2：没有未读和没有进行中任务时智能隐藏徽章
+  - 功能3：引入已读状态管理，基于localStorage持久化
+  - 最佳实践：Progressive Disclosure, Context Awareness, User Intent Recognition
+  - 文件：`src/components/GlobalTaskButton.tsx`
+  - 修改时间: 2024年12月19日 16:50
+- [x] **🎨 装饰图标精简优化**
+  - 需求：只保留4个核心产品图标（钥匙扣/手机壳/衣服/30+）
+  - 优化1：移除多余装饰图标，从6+个减少到4个核心产品
+  - 优化2：手机壳图标移至IP图片边缘，而非按键框下方
+  - 优化3：保持产品图标的hover缩放效果和边框样式
+  - 文件：`src/components/IPDetail.tsx` & `src/components/HeroSection.tsx`
+  - 修改时间: 2024年12月19日 17:20
+- [x] **✨ 保存按钮动效优化**
+  - 功能：为"保存IP形象"按钮添加微微跳动动效
+  - 效果：鼓励用户点击，提升转化率
+  - 实现：自定义gentle-bounce动画，2秒循环，优雅不突兀
+  - 细节：保存中时禁用动画，hover时切换为bounce效果
+  - 文件：`src/components/HeroSection.tsx` & `src/app/globals.css`
+  - 修改时间: 2024年12月19日 17:20
+- [x] **🎨 图标悬浮位置优化**
+  - 问题：图标嵌入在图片内部，视觉效果不佳
+  - 解决：图标改为悬浮在图片边缘外，真正的"悬浮"效果
+  - 调整1：手机壳图标从左上角下移120px，避免与30+重叠
+  - 调整2：衣服图标从右下角上移120px，平衡布局
+  - 调整3：增强阴影效果(shadow-xl)，突出悬浮感
+  - 调整4：钥匙扣和30+保持角落位置，形成视觉锚点
+  - 文件：`src/components/IPDetail.tsx` & `src/components/HeroSection.tsx`
+  - 修改时间: 2024年12月19日 17:40
+
+### UI改进详情
+**装饰图标系统：**
+- IP详情页：6个随机位置的静态图标（✨🎨🎭🎪🎀⭐）
+- 生成结果页：6个带动画的装饰图标（✨💖🌈👑🦋🚀）
+- 外围产品图标：7个周边商品展示图标
+
+**布局优化：**
+- 图片容器从 `object-contain` 改为 `object-cover` 
+- 固定高度 420px，确保一致的视觉效果
+- 装饰图标层叠在图片之上，不影响核心内容
+
+### 智能通知徽章详情
+**核心设计理念：**
+- **Progressive Disclosure（渐进式披露）**：只在必要时显示信息
+- **State Management（状态管理）**：跟踪用户的阅读状态
+- **Context Awareness（上下文感知）**：根据用户当前行为调整
+- **User Intent Recognition（用户意图识别）**：理解用户访问意图
+
+**显示逻辑：**
+1. 有处理中任务 → 始终显示（蓝色，旋转图标）
+2. 有失败任务 → 始终显示（红色，警告图标）
+3. 有未读完成任务 → 显示（绿色，完成图标）
+4. 所有任务已读且无新活动 → 隐藏
+
+**状态持久化：**
+- 基于localStorage存储用户级别的通知状态
+- 跟踪最后阅读时间戳和已读完成任务数量
+- 检测任务数量变化，自动重置状态
+
+**用户行为响应：**
+- 访问/tasks页面 → 自动标记当前完成任务为已读
+- 点击徽章 → 立即标记为已读并跳转
+- 路由变化监听 → 实时检测用户访问意图
+
+## 🎯 下一步计划
+- [ ] 检查项目功能是否正常
+- [ ] 确认Supabase连接状态
+- [ ] 测试主要功能模块
+- [ ] 优化服务器端渲染性能（如果需要）
+
+## 📝 最近修改
+- [x] 修改应用场景默认标签：从"个人用户"改为"创意设计师"
+  - 文件：`src/components/UseCases.tsx`
+  - 修改时间: 2024年12月19日 14:52
+- [x] **重大修复：gpt-4o-image API调用格式**
+  - 问题：API调用异常，返回空对象 `{}`
+  - 原因：图片传递格式不符合APICore标准
+  - 修复：将字符串拼接格式改为标准OpenAI Chat格式
+  - 文件：`src/lib/ai-api.ts` (tryAPICall & triggerSparrowGeneration函数)
+  - 参考文档：[APICore gpt-4o-image文档](https://doc.apicore.ai/api-301177866)
+  - 修复时间: 2024年12月19日 15:05
+- [x] **环境变量修复：添加缺失的AI_API_KEY**
+  - 问题："所有API配置都失败"的根本原因
+  - 修复：添加 `AI_API_KEY=sk-DudMcfHfR2LzzePep763GUhx9I5594RAciiegxG4EgrpGmos`
+  - 文件：`.env.local`
+  - 修复时间: 2024年12月19日 15:15
+- [x] **Next.js 15 兼容性修复：cookies() API**
+  - 问题：`cookies()` should be awaited before using its value
+  - 修复：将同步cookies调用改为async/await模式  
+  - 文件：`src/app/api/subscription/route.ts`
+  - 修复时间: 2024年12月19日 15:16
+- [x] **UI优化：IP形象展示页面效果改进**
+  - 优化1：IP效果图撑满容器，去除左右留白
+  - 优化2：添加随机装饰图标，始终跟随IP效果图
+  - 优化3：增加动画效果，提升视觉体验
+  - 文件：`src/components/IPDetail.tsx` & `src/components/HeroSection.tsx`
+  - 修改时间: 2024年12月19日 16:20
+- [x] **智能任务通知徽章优化 - Smart Notification Badge**
+  - 功能1：进入任务列表页面后自动清空完成任务提醒
+  - 功能2：没有未读和没有进行中任务时智能隐藏徽章
+  - 功能3：引入已读状态管理，基于localStorage持久化
+  - 最佳实践：Progressive Disclosure, Context Awareness, User Intent Recognition
+  - 文件：`src/components/GlobalTaskButton.tsx`
+  - 修改时间: 2024年12月19日 16:50
+- [x] **🎨 装饰图标精简优化**
+  - 需求：只保留4个核心产品图标（钥匙扣/手机壳/衣服/30+）
+  - 优化1：移除多余装饰图标，从6+个减少到4个核心产品
+  - 优化2：手机壳图标移至IP图片边缘，而非按键框下方
+  - 优化3：保持产品图标的hover缩放效果和边框样式
+  - 文件：`src/components/IPDetail.tsx` & `src/components/HeroSection.tsx`
+  - 修改时间: 2024年12月19日 17:20
+- [x] **✨ 保存按钮动效优化**
+  - 功能：为"保存IP形象"按钮添加微微跳动动效
+  - 效果：鼓励用户点击，提升转化率
+  - 实现：自定义gentle-bounce动画，2秒循环，优雅不突兀
+  - 细节：保存中时禁用动画，hover时切换为bounce效果
+  - 文件：`src/components/HeroSection.tsx` & `src/app/globals.css`
+  - 修改时间: 2024年12月19日 17:20
+- [x] **🎨 图标悬浮位置优化**
+  - 问题：图标嵌入在图片内部，视觉效果不佳
+  - 解决：图标改为悬浮在图片边缘外，真正的"悬浮"效果
+  - 调整1：手机壳图标从左上角下移120px，避免与30+重叠
+  - 调整2：衣服图标从右下角上移120px，平衡布局
+  - 调整3：增强阴影效果(shadow-xl)，突出悬浮感
+  - 调整4：钥匙扣和30+保持角落位置，形成视觉锚点
+  - 文件：`src/components/IPDetail.tsx` & `src/components/HeroSection.tsx`
+  - 修改时间: 2024年12月19日 17:40
+
+### UI改进详情
+**装饰图标系统：**
+- IP详情页：6个随机位置的静态图标（✨🎨🎭🎪🎀⭐）
+- 生成结果页：6个带动画的装饰图标（✨💖🌈👑🦋🚀）
+- 外围产品图标：7个周边商品展示图标
+
+**布局优化：**
+- 图片容器从 `object-contain` 改为 `object-cover` 
+- 固定高度 420px，确保一致的视觉效果
+- 装饰图标层叠在图片之上，不影响核心内容
+
+### 智能通知徽章详情
+**核心设计理念：**
+- **Progressive Disclosure（渐进式披露）**：只在必要时显示信息
+- **State Management（状态管理）**：跟踪用户的阅读状态
+- **Context Awareness（上下文感知）**：根据用户当前行为调整
+- **User Intent Recognition（用户意图识别）**：理解用户访问意图
+
+**显示逻辑：**
+1. 有处理中任务 → 始终显示（蓝色，旋转图标）
+2. 有失败任务 → 始终显示（红色，警告图标）
+3. 有未读完成任务 → 显示（绿色，完成图标）
+4. 所有任务已读且无新活动 → 隐藏
+
+**状态持久化：**
+- 基于localStorage存储用户级别的通知状态
+- 跟踪最后阅读时间戳和已读完成任务数量
+- 检测任务数量变化，自动重置状态
+
+**用户行为响应：**
+- 访问/tasks页面 → 自动标记当前完成任务为已读
+- 点击徽章 → 立即标记为已读并跳转
+- 路由变化监听 → 实时检测用户访问意图
+
+## 🎯 下一步计划
+- [ ] 检查项目功能是否正常
+- [ ] 确认Supabase连接状态
+- [ ] 测试主要功能模块
+- [ ] 优化服务器端渲染性能（如果需要）
+
+## 📝 最近修改
+- [x] 修改应用场景默认标签：从"个人用户"改为"创意设计师"
+  - 文件：`src/components/UseCases.tsx`
+  - 修改时间: 2024年12月19日 14:52
+- [x] **重大修复：gpt-4o-image API调用格式**
+  - 问题：API调用异常，返回空对象 `{}`
+  - 原因：图片传递格式不符合APICore标准
+  - 修复：将字符串拼接格式改为标准OpenAI Chat格式
+  - 文件：`src/lib/ai-api.ts` (tryAPICall & triggerSparrowGeneration函数)
+  - 参考文档：[APICore gpt-4o-image文档](https://doc.apicore.ai/api-301177866)
+  - 修复时间: 2024年12月19日 15:05
+- [x] **环境变量修复：添加缺失的AI_API_KEY**
+  - 问题："所有API配置都失败"的根本原因
+  - 修复：添加 `AI_API_KEY=sk-DudMcfHfR2LzzePep763GUhx9I5594RAciiegxG4EgrpGmos`
+  - 文件：`.env.local`
+  - 修复时间: 2024年12月19日 15:15
+- [x] **Next.js 15 兼容性修复：cookies() API**
+  - 问题：`cookies()` should be awaited before using its value
+  - 修复：将同步cookies调用改为async/await模式  
+  - 文件：`src/app/api/subscription/route.ts`
+  - 修复时间: 2024年12月19日 15:16
+- [x] **UI优化：IP形象展示页面效果改进**
+  - 优化1：IP效果图撑满容器，去除左右留白
+  - 优化2：添加随机装饰图标，始终跟随IP效果图
+  - 优化3：增加动画效果，提升视觉体验
+  - 文件：`src/components/IPDetail.tsx` & `src/components/HeroSection.tsx`
+  - 修改时间: 2024年12月19日 16:20
+- [x] **智能任务通知徽章优化 - Smart Notification Badge**
+  - 功能1：进入任务列表页面后自动清空完成任务提醒
+  - 功能2：没有未读和没有进行中任务时智能隐藏徽章
+  - 功能3：引入已读状态管理，基于localStorage持久化
+  - 最佳实践：Progressive Disclosure, Context Awareness, User Intent Recognition
+  - 文件：`src/components/GlobalTaskButton.tsx`
+  - 修改时间: 2024年12月19日 16:50
+- [x] **🎨 装饰图标精简优化**
+  - 需求：只保留4个核心产品图标（钥匙扣/手机壳/衣服/30+）
+  - 优化1：移除多余装饰图标，从6+个减少到4个核心产品
+  - 优化2：手机壳图标移至IP图片边缘，而非按键框下方
+  - 优化3：保持产品图标的hover缩放效果和边框样式
+  - 文件：`src/components/IPDetail.tsx` & `src/components/HeroSection.tsx`
+  - 修改时间: 2024年12月19日 17:20
+- [x] **✨ 保存按钮动效优化**
+  - 功能：为"保存IP形象"按钮添加微微跳动动效
+  - 效果：鼓励用户点击，提升转化率
+  - 实现：自定义gentle-bounce动画，2秒循环，优雅不突兀
+  - 细节：保存中时禁用动画，hover时切换为bounce效果
+  - 文件：`src/components/HeroSection.tsx` & `src/app/globals.css`
+  - 修改时间: 2024年12月19日 17:20
+- [x] **🎨 图标悬浮位置优化**
+  - 问题：图标嵌入在图片内部，视觉效果不佳
+  - 解决：图标改为悬浮在图片边缘外，真正的"悬浮"效果
+  - 调整1：手机壳图标从左上角下移120px，避免与30+重叠
+  - 调整2：衣服图标从右下角上移120px，平衡布局
+  - 调整3：增强阴影效果(shadow-xl)，突出悬浮感
+  - 调整4：钥匙扣和30+保持角落位置，形成视觉锚点
+  - 文件：`src/components/IPDetail.tsx` & `src/components/HeroSection.tsx`
+  - 修改时间: 2024年12月19日 17:40
+
+### UI改进详情
+**装饰图标系统：**
+- IP详情页：6个随机位置的静态图标（✨🎨🎭🎪🎀⭐）
+- 生成结果页：6个带动画的装饰图标（✨💖🌈👑🦋🚀）
+- 外围产品图标：7个周边商品展示图标
+
+**布局优化：**
+- 图片容器从 `object-contain` 改为 `object-cover` 
+- 固定高度 420px，确保一致的视觉效果
+- 装饰图标层叠在图片之上，不影响核心内容
+
+### 智能通知徽章详情
+**核心设计理念：**
+- **Progressive Disclosure（渐进式披露）**：只在必要时显示信息
+- **State Management（状态管理）**：跟踪用户的阅读状态
+- **Context Awareness（上下文感知）**：根据用户当前行为调整
+- **User Intent Recognition（用户意图识别）**：理解用户访问意图
+
+**显示逻辑：**
+1. 有处理中任务 → 始终显示（蓝色，旋转图标）
+2. 有失败任务 → 始终显示（红色，警告图标）
+3. 有未读完成任务 → 显示（绿色，完成图标）
+4. 所有任务已读且无新活动 → 隐藏
+
+**状态持久化：**
+- 基于localStorage存储用户级别的通知状态
+- 跟踪最后阅读时间戳和已读完成任务数量
+- 检测任务数量变化，自动重置状态
+
+**用户行为响应：**
+- 访问/tasks页面 → 自动标记当前完成任务为已读
+- 点击徽章 → 立即标记为已读并跳转
+- 路由变化监听 → 实时检测用户访问意图
+
+## 🎯 下一步计划
+- [ ] 检查项目功能是否正常
+- [ ] 确认Supabase连接状态
+- [ ] 测试主要功能模块
+- [ ] 优化服务器端渲染性能（如果需要）
+
+## 📝 最近修改
+- [x] 修改应用场景默认标签：从"个人用户"改为"创意设计师"
+  - 文件：`src/components/UseCases.tsx`
+  - 修改时间: 2024年12月19日 14:52
+- [x] **重大修复：gpt-4o-image API调用格式**
+  - 问题：API调用异常，返回空对象 `{}`
+  - 原因：图片传递格式不符合APICore标准
+  - 修复：将字符串拼接格式改为标准OpenAI Chat格式
+  - 文件：`src/lib/ai-api.ts` (tryAPICall & triggerSparrowGeneration函数)
+  - 参考文档：[APICore gpt-4o-image文档](https://doc.apicore.ai/api-301177866)
+  - 修复时间: 2024年12月19日 15:05
+- [x] **环境变量修复：添加缺失的AI_API_KEY**
+  - 问题："所有API配置都失败"的根本原因
+  - 修复：添加 `AI_API_KEY=sk-DudMcfHfR2LzzePep763GUhx9I5594RAciiegxG4EgrpGmos`
+  - 文件：`.env.local`
+  - 修复时间: 2024年12月19日 15:15
+- [x] **Next.js 15 兼容性修复：cookies() API**
+  - 问题：`cookies()` should be awaited before using its value
+  - 修复：将同步cookies调用改为async/await模式  
+  - 文件：`src/app/api/subscription/route.ts`
+  - 修复时间: 2024年12月19日 15:16
+- [x] **UI优化：IP形象展示页面效果改进**
+  - 优化1：IP效果图撑满容器，去除左右留白
+  - 优化2：添加随机装饰图标，始终跟随IP效果图
+  - 优化3：增加动画效果，提升视觉体验
+  - 文件：`src/components/IPDetail.tsx` & `src/components/HeroSection.tsx`
+  - 修改时间: 2024年12月19日 16:20
+- [x] **智能任务通知徽章优化 - Smart Notification Badge**
+  - 功能1：进入任务列表页面后自动清空完成任务提醒
+  - 功能2：没有未读和没有进行中任务时智能隐藏徽章
+  - 功能3：引入已读状态管理，基于localStorage持久化
+  - 最佳实践：Progressive Disclosure, Context Awareness, User Intent Recognition
+  - 文件：`src/components/GlobalTaskButton.tsx`
+  - 修改时间: 2024年12月19日 16:50
+- [x] **🎨 装饰图标精简优化**
+  - 需求：只保留4个核心产品图标（钥匙扣/手机壳/衣服/30+）
+  - 优化1：移除多余装饰图标，从6+个减少到4个核心产品
+  - 优化2：手机壳图标移至IP图片边缘，而非按键框下方
+  - 优化3：保持产品图标的hover缩放效果和边框样式
+  - 文件：`src/components/IPDetail.tsx` & `src/components/HeroSection.tsx`
+  - 修改时间: 2024年12月19日 17:20
+- [x] **✨ 保存按钮动效优化**
+  - 功能：为"保存IP形象"按钮添加微微跳动动效
+  - 效果：鼓励用户点击，提升转化率
+  - 实现：自定义gentle-bounce动画，2秒循环，优雅不突兀
+  - 细节：保存中时禁用动画，hover时切换为bounce效果
+  - 文件：`src/components/HeroSection.tsx` & `src/app/globals.css`
+  - 修改时间: 2024年12月19日 17:20
+- [x] **🎨 图标悬浮位置优化**
+  - 问题：图标嵌入在图片内部，视觉效果不佳
+  - 解决：图标改为悬浮在图片边缘外，真正的"悬浮"效果
+  - 调整1：手机壳图标从左上角下移120px，避免与30+重叠
+  - 调整2：衣服图标从右下角上移120px，平衡布局
+  - 调整3：增强阴影效果(shadow-xl)，突出悬浮感
+  - 调整4：钥匙扣和30+保持角落位置，形成视觉锚点
+  - 文件：`src/components/IPDetail.tsx` & `src/components/HeroSection.tsx`
+  - 修改时间: 2024年12月19日 17:40
+
+### UI改进详情
+**装饰图标系统：**
+- IP详情页：6个随机位置的静态图标（✨🎨🎭🎪🎀⭐）
+- 生成结果页：6个带动画的装饰图标（✨💖🌈👑🦋🚀）
+- 外围产品图标：7个周边商品展示图标
+
+**布局优化：**
+- 图片容器从 `object-contain` 改为 `object-cover` 
+- 固定高度 420px，确保一致的视觉效果
+- 装饰图标层叠在图片之上，不影响核心内容
+
+### 智能通知徽章详情
+**核心设计理念：**
+- **Progressive Disclosure（渐进式披露）**：只在必要时显示信息
+- **State Management（状态管理）**：跟踪用户的阅读状态
+- **Context Awareness（上下文感知）**：根据用户当前行为调整
+- **User Intent Recognition（用户意图识别）**：理解用户访问意图
+
+**显示逻辑：**
+1. 有处理中任务 → 始终显示（蓝色，旋转图标）
+2. 有失败任务 → 始终显示（红色，警告图标）
+3. 有未读完成任务 → 显示（绿色，完成图标）
+4. 所有任务已读且无新活动 → 隐藏
+
+**状态持久化：**
+- 基于localStorage存储用户级别的通知状态
+- 跟踪最后阅读时间戳和已读完成任务数量
+- 检测任务数量变化，自动重置状态
+
+**用户行为响应：**
+- 访问/tasks页面 → 自动标记当前完成任务为已读
+- 点击徽章 → 立即标记为已读并跳转
+- 路由变化监听 → 实时检测用户访问意图
+
+## 🎯 下一步计划
+- [ ] 检查项目功能是否正常
+- [ ] 确认Supabase连接状态
+- [ ] 测试主要功能模块
+- [ ] 优化服务器端渲染性能（如果需要）
+
+## 📝 最近修改
+- [x] 修改应用场景默认标签：从"个人用户"改为"创意设计师"
+  - 文件：`src/components/UseCases.tsx`
+  - 修改时间: 2024年12月19日 14:52
+- [x] **重大修复：gpt-4o-image API调用格式**
+  - 问题：API调用异常，返回空对象 `{}`
+  - 原因：图片传递格式不符合APICore标准
+  - 修复：将字符串拼接格式改为标准OpenAI Chat格式
+  - 文件：`src/lib/ai-api.ts` (tryAPICall & triggerSparrowGeneration函数)
+  - 参考文档：[APICore gpt-4o-image文档](https://doc.apicore.ai/api-301177866)
+  - 修复时间: 2024年12月19日 15:05
+- [x] **环境变量修复：添加缺失的AI_API_KEY**
+  - 问题："所有API配置都失败"的根本原因
+  - 修复：添加 `AI_API_KEY=sk-DudMcfHfR2LzzePep763GUhx9I5594RAciiegxG4EgrpGmos`
+  - 文件：`.env.local`
+  - 修复时间: 2024年12月19日 15:15
+- [x] **Next.js 15 兼容性修复：cookies() API**
+  - 问题：`cookies()` should be awaited before using its value
+  - 修复：将同步cookies调用改为async/await模式  
+  - 文件：`src/app/api/subscription/route.ts`
+  - 修复时间: 2024年12月19日 15:16
+- [x] **UI优化：IP形象展示页面效果改进**
+  - 优化1：IP效果图撑满容器，去除左右留白
+  - 优化2：添加随机装饰图标，始终跟随IP效果图
+  - 优化3：增加动画效果，提升视觉体验
+  - 文件：`src/components/IPDetail.tsx` & `src/components/HeroSection.tsx`
+  - 修改时间: 2024年12月19日 16:20
+- [x] **智能任务通知徽章优化 - Smart Notification Badge**
+  - 功能1：进入任务列表页面后自动清空完成任务提醒
+  - 功能2：没有未读和没有进行中任务时智能隐藏徽章
+  - 功能3：引入已读状态管理，基于localStorage持久化
+  - 最佳实践：Progressive Disclosure, Context Awareness, User Intent Recognition
+  - 文件：`src/components/GlobalTaskButton.tsx`
+  - 修改时间: 2024年12月19日 16:50
+- [x] **🎨 装饰图标精简优化**
+  - 需求：只保留4个核心产品图标（钥匙扣/手机壳/衣服/30+）
+  - 优化1：移除多余装饰图标，从6+个减少到4个核心产品
+  - 优化2：手机壳图标移至IP图片边缘，而非按键框下方
+  - 优化3：保持产品图标的hover缩放效果和边框样式
+  - 文件：`src/components/IPDetail.tsx` & `src/components/HeroSection.tsx`
+  - 修改时间: 2024年12月19日 17:20
+- [x] **✨ 保存按钮动效优化**
+  - 功能：为"保存IP形象"按钮添加微微跳动动效
+  - 效果：鼓励用户点击，提升转化率
+  - 实现：自定义gentle-bounce动画，2秒循环，优雅不突兀
+  - 细节：保存中时禁用动画，hover时切换为bounce效果
+  - 文件：`src/components/HeroSection.tsx` & `src/app/globals.css`
+  - 修改时间: 2024年12月19日 17:20
+- [x] **🎨 图标悬浮位置优化**
+  - 问题：图标嵌入在图片内部，视觉效果不佳
+  - 解决：图标改为悬浮在图片边缘外，真正的"悬浮"效果
+  - 调整1：手机壳图标从左上角下移120px，避免与30+重叠
+  - 调整2：衣服图标从右下角上移120px，平衡布局
+  - 调整3：增强阴影效果(shadow-xl)，突出悬浮感
+  - 调整4：钥匙扣和30+保持角落位置，形成视觉锚点
+  - 文件：`src/components/IPDetail.tsx` & `src/components/HeroSection.tsx`
+  - 修改时间: 2024年12月19日 17:40
+
+### UI改进详情
+**装饰图标系统：**
+- IP详情页：6个随机位置的静态图标（✨🎨🎭🎪🎀⭐）
+- 生成结果页：6个带动画的装饰图标（✨💖🌈👑🦋🚀）
+- 外围产品图标：7个周边商品展示图标
+
+**布局优化：**
+- 图片容器从 `object-contain` 改为 `object-cover` 
+- 固定高度 420px，确保一致的视觉效果
+- 装饰图标层叠在图片之上，不影响核心内容
+
+### 智能通知徽章详情
+**核心设计理念：**
+- **Progressive Disclosure（渐进式披露）**：只在必要时显示信息
+- **State Management（状态管理）**：跟踪用户的阅读状态
+- **Context Awareness（上下文感知）**：根据用户当前行为调整
+- **User Intent Recognition（用户意图识别）**：理解用户访问意图
+
+**显示逻辑：**
+1. 有处理中任务 → 始终显示（蓝色，旋转图标）
+2. 有失败任务 → 始终显示（红色，警告图标）
+3. 有未读完成任务 → 显示（绿色，完成图标）
+4. 所有任务已读且无新活动 → 隐藏
+
+**状态持久化：**
+- 基于localStorage存储用户级别的通知状态
+- 跟踪最后阅读时间戳和已读完成任务数量
+- 检测任务数量变化，自动重置状态
+
+**用户行为响应：**
+- 访问/tasks页面 → 自动标记当前完成任务为已读
+- 点击徽章 → 立即标记为已读并跳转
+- 路由变化监听 → 实时检测用户访问意图
+
+## 🎯 下一步计划
+- [ ] 检查项目功能是否正常
+- [ ] 确认Supabase连接状态
+- [ ] 测试主要功能模块
+- [ ] 优化服务器端渲染性能（如果需要）
+
+## 📝 最近修改
+- [x] 修改应用场景默认标签：从"个人用户"改为"创意设计师"
+  - 文件：`src/components/UseCases.tsx`
+  - 修改时间: 2024年12月19日 14:52
+- [x] **重大修复：gpt-4o-image API调用格式**
+  - 问题：API调用异常，返回空对象 `{}`
+  - 原因：图片传递格式不符合APICore标准
+  - 修复：将字符串拼接格式改为标准OpenAI Chat格式
+  - 文件：`src/lib/ai-api.ts` (tryAPICall & triggerSparrowGeneration函数)
+  - 参考文档：[APICore gpt-4o-image文档](https://doc.apicore.ai/api-301177866)
+  - 修复时间: 2024年12月19日 15:05
+- [x] **环境变量修复：添加缺失的AI_API_KEY**
+  - 问题："所有API配置都失败"的根本原因
+  - 修复：添加 `AI_API_KEY=sk-DudMcfHfR2LzzePep763GUhx9I5594RAciiegxG4EgrpGmos`
+  - 文件：`.env.local`
+  - 修复时间: 2024年12月19日 15:15
+- [x] **Next.js 15 兼容性修复：cookies() API**
+  - 问题：`cookies()` should be awaited before using its value
+  - 修复：将同步cookies调用改为async/await模式  
+  - 文件：`src/app/api/subscription/route.ts`
+  - 修复时间: 2024年12月19日 15:16
+- [x] **UI优化：IP形象展示页面效果改进**
+  - 优化1：IP效果图撑满容器，去除左右留白
+  - 优化2：添加随机装饰图标，始终跟随IP效果图
+  - 优化3：增加动画效果，提升视觉体验
+  - 文件：`src/components/IPDetail.tsx` & `src/components/HeroSection.tsx`
+  - 修改时间: 2024年12月19日 16:20
+- [x] **智能任务通知徽章优化 - Smart Notification Badge**
+  - 功能1：进入任务列表页面后自动清空完成任务提醒
+  - 功能2：没有未读和没有进行中任务时智能隐藏徽章
+  - 功能3：引入已读状态管理，基于localStorage持久化
+  - 最佳实践：Progressive Disclosure, Context Awareness, User Intent Recognition
+  - 文件：`src/components/GlobalTaskButton.tsx`
+  - 修改时间: 2024年12月19日 16:50
+- [x] **🎨 装饰图标精简优化**
+  - 需求：只保留4个核心产品图标（钥匙扣/手机壳/衣服/30+）
+  - 优化1：移除多余装饰图标，从6+个减少到4个核心产品
+  - 优化2：手机壳图标移至IP图片边缘，而非按键框下方
+  - 优化3：保持产品图标的hover缩放效果和边框样式
+  - 文件：`src/components/IPDetail.tsx` & `src/components/HeroSection.tsx`
+  - 修改时间: 2024年12月19日 17:20
+- [x] **✨ 保存按钮动效优化**
+  - 功能：为"保存IP形象"按钮添加微微跳动动效
+  - 效果：鼓励用户点击，提升转化率
+  - 实现：自定义gentle-bounce动画，2秒循环，优雅不突兀
+  - 细节：保存中时禁用动画，hover时切换为bounce效果
+  - 文件：`src/components/HeroSection.tsx` & `src/app/globals.css`
+  - 修改时间: 2024年12月19日 17:20
+- [x] **🎨 图标悬浮位置优化**
+  - 问题：图标嵌入在图片内部，视觉效果不佳
+  - 解决：图标改为悬浮在图片边缘外，真正的"悬浮"效果
+  - 调整1：手机壳图标从左上角下移120px，避免与30+重叠
+  - 调整2：衣服图标从右下角上移120px，平衡布局
+  - 调整3：增强阴影效果(shadow-xl)，突出悬浮感
+  - 调整4：钥匙扣和30+保持角落位置，形成视觉锚点
+  - 文件：`src/components/IPDetail.tsx` & `src/components/HeroSection.tsx`
+  - 修改时间: 2024年12月19日 17:40
+
+### UI改进详情
+**装饰图标系统：**
+- IP详情页：6个随机位置的静态图标（✨🎨🎭🎪🎀⭐）
+- 生成结果页：6个带动画的装饰图标（✨💖🌈👑🦋🚀）
+- 外围产品图标：7个周边商品展示图标
+
+**布局优化：**
+- 图片容器从 `object-contain` 改为 `object-cover` 
+- 固定高度 420px，确保一致的视觉效果
+- 装饰图标层叠在图片之上，不影响核心内容
+
+### 智能通知徽章详情
+**核心设计理念：**
+- **Progressive Disclosure（渐进式披露）**：只在必要时显示信息
+- **State Management（状态管理）**：跟踪用户的阅读状态
+- **Context Awareness（上下文感知）**：根据用户当前行为调整
+- **User Intent Recognition（用户意图识别）**：理解用户访问意图
+
+**显示逻辑：**
+1. 有处理中任务 → 始终显示（蓝色，旋转图标）
+2. 有失败任务 → 始终显示（红色，警告图标）
+3. 有未读完成任务 → 显示（绿色，完成图标）
+4. 所有任务已读且无新活动 → 隐藏
+
+**状态持久化：**
+- 基于localStorage存储用户级别的通知状态
+- 跟踪最后阅读时间戳和已读完成任务数量
+- 检测任务数量变化，自动重置状态
+
+**用户行为响应：**
+- 访问/tasks页面 → 自动标记当前完成任务为已读
+- 点击徽章 → 立即标记为已读并跳转
+- 路由变化监听 → 实时检测用户访问意图
+
+## 🎯 下一步计划
+- [ ] 检查项目功能是否正常
+- [ ] 确认Supabase连接状态
+- [ ] 测试主要功能模块
+- [ ] 优化服务器端渲染性能（如果需要）
+
+## 📝 最近修改
+- [x] 修改应用场景默认标签：从"个人用户"改为"创意设计师"
+  - 文件：`src/components/UseCases.tsx`
+  - 修改时间: 2024年12月19日 14:52
+- [x] **重大修复：gpt-4o-image API调用格式**
+  - 问题：API调用异常，返回空对象 `{}`
+  - 原因：图片传递格式不符合APICore标准
+  - 修复：将字符串拼接格式改为标准OpenAI Chat格式
+  - 文件：`src/lib/ai-api.ts` (tryAPICall & triggerSparrowGeneration函数)
+  - 参考文档：[APICore gpt-4o-image文档](https://doc.apicore.ai/api-301177866)
+  - 修复时间: 2024年12月19日 15:05
+- [x] **环境变量修复：添加缺失的AI_API_KEY**
+  - 问题："所有API配置都失败"的根本原因
+  - 修复：添加 `AI_API_KEY=sk-DudMcfHfR2LzzePep763GUhx9I5594RAciiegxG4EgrpGmos`
+  - 文件：`.env.local`
+  - 修复时间: 2024年12月19日 15:15
+- [x] **Next.js 15 兼容性修复：cookies() API**
+  - 问题：`cookies()` should be awaited before using its value
+  - 修复：将同步cookies调用改为async/await模式  
+  - 文件：`src/app/api/subscription/route.ts`
+  - 修复时间: 2024年12月19日 15:16
+- [x] **UI优化：IP形象展示页面效果改进**
+  - 优化1：IP效果图撑满容器，去除左右留白
+  - 优化2：添加随机装饰图标，始终跟随IP效果图
+  - 优化3：增加动画效果，提升视觉体验
+  - 文件：`src/components/IPDetail.tsx` & `src/components/HeroSection.tsx`
+  - 修改时间: 2024年12月19日 16:20
+- [x] **智能任务通知徽章优化 - Smart Notification Badge**
+  - 功能1：进入任务列表页面后自动清空完成任务提醒
+  - 功能2：没有未读和没有进行中任务时智能隐藏徽章
+  - 功能3：引入已读状态管理，基于localStorage持久化
+  - 最佳实践：Progressive Disclosure, Context Awareness, User Intent Recognition
+  - 文件：`src/components/GlobalTaskButton.tsx`
+  - 修改时间: 2024年12月19日 16:50
+- [x] **🎨 装饰图标精简优化**
+  - 需求：只保留4个核心产品图标（钥匙扣/手机壳/衣服/30+）
+  - 优化1：移除多余装饰图标，从6+个减少到4个核心产品
+  - 优化2：手机壳图标移至IP图片边缘，而非按键框下方
+  - 优化3：保持产品图标的hover缩放效果和边框样式
+  - 文件：`src/components/IPDetail.tsx` & `src/components/HeroSection.tsx`
+  - 修改时间: 2024年12月19日 17:20
+- [x] **✨ 保存按钮动效优化**
+  - 功能：为"保存IP形象"按钮添加微微跳动动效
+  - 效果：鼓励用户点击，提升转化率
+  - 实现：自定义gentle-bounce动画，2秒循环，优雅不突兀
+  - 细节：保存中时禁用动画，hover时切换为bounce效果
+  - 文件：`src/components/HeroSection.tsx` & `src/app/globals.css`
+  - 修改时间: 2024年12月19日 17:20
+- [x] **🎨 图标悬浮位置优化**
+  - 问题：图标嵌入在图片内部，视觉效果不佳
+  - 解决：图标改为悬浮在图片边缘外，真正的"悬浮"效果
+  - 调整1：手机壳图标从左上角下移120px，避免与30+重叠
+  - 调整2：衣服图标从右下角上移120px，平衡布局
+  - 调整3：增强阴影效果(shadow-xl)，突出悬浮感
+  - 调整4：钥匙扣和30+保持角落位置，形成视觉锚点
+  - 文件：`src/components/IPDetail.tsx` & `src/components/HeroSection.tsx`
+  - 修改时间: 2024年12月19日 17:40
+
+### UI改进详情
+**装饰图标系统：**
+- IP详情页：6个随机位置的静态图标（✨🎨🎭🎪🎀⭐）
+- 生成结果页：6个带动画的装饰图标（✨💖🌈👑🦋🚀）
+- 外围产品图标：7个周边商品展示图标
+
+**布局优化：**
+- 图片容器从 `object-contain` 改为 `object-cover` 
+- 固定高度 420px，确保一致的视觉效果
+- 装饰图标层叠在图片之上，不影响核心内容
+
+### 智能通知徽章详情
+**核心设计理念：**
+- **Progressive Disclosure（渐进式披露）**：只在必要时显示信息
+- **State Management（状态管理）**：跟踪用户的阅读状态
+- **Context Awareness（上下文感知）**：根据用户当前行为调整
+- **User Intent Recognition（用户意图识别）**：理解用户访问意图
+
+**显示逻辑：**
+1. 有处理中任务 → 始终显示（蓝色，旋转图标）
+2. 有失败任务 → 始终显示（红色，警告图标）
+3. 有未读完成任务 → 显示（绿色，完成图标）
+4. 所有任务已读且无新活动 → 隐藏
+
+**状态持久化：**
+- 基于localStorage存储用户级别的通知状态
+- 跟踪最后阅读时间戳和已读完成任务数量
+- 检测任务数量变化，自动重置状态
+
+**用户行为响应：**
+- 访问/tasks页面 → 自动标记当前完成任务为已读
+- 点击徽章 → 立即标记为已读并跳转
+- 路由变化监听 → 实时检测用户访问意图
+
+## 🎯 下一步计划
+- [ ] 检查项目功能是否正常
+- [ ] 确认Supabase连接状态
+- [ ] 测试主要功能模块
+- [ ] 优化服务器端渲染性能（如果需要）
+
+## 📝 最近修改
+- [x] 修改应用场景默认标签：从"个人用户"改为"创意设计师"
+  - 文件：`src/components/UseCases.tsx`
+  - 修改时间: 2024年12月19日 14:52
+- [x] **重大修复：gpt-4o-image API调用格式**
+  - 问题：API调用异常，返回空对象 `{}`
+  - 原因：图片传递格式不符合APICore标准
+  - 修复：将字符串拼接格式改为标准OpenAI Chat格式
+  - 文件：`src/lib/ai-api.ts` (tryAPICall & triggerSparrowGeneration函数)
+  - 参考文档：[APICore gpt-4o-image文档](https://doc.apicore.ai/api-301177866)
+  - 修复时间: 2024年12月19日 15:05
+- [x] **环境变量修复：添加缺失的AI_API_KEY**
+  - 问题："所有API配置都失败"的根本原因
+  - 修复：添加 `AI_API_KEY=sk-DudMcfHfR2LzzePep763GUhx9I5594RAciiegxG4EgrpGmos`
+  - 文件：`.env.local`
+  - 修复时间: 2024年12月19日 15:15
+- [x] **Next.js 15 兼容性修复：cookies() API**
+  - 问题：`cookies()` should be awaited before using its value
+  - 修复：将同步cookies调用改为async/await模式  
+  - 文件：`src/app/api/subscription/route.ts`
+  - 修复时间: 2024年12月19日 15:16
+- [x] **UI优化：IP形象展示页面效果改进**
+  - 优化1：IP效果图撑满容器，去除左右留白
+  - 优化2：添加随机装饰图标，始终跟随IP效果图
+  - 优化3：增加动画效果，提升视觉体验
+  - 文件：`src/components/IPDetail.tsx` & `src/components/HeroSection.tsx`
+  - 修改时间: 2024年12月19日 16:20
+- [x] **智能任务通知徽章优化 - Smart Notification Badge**
+  - 功能1：进入任务列表页面后自动清空完成任务提醒
+  - 功能2：没有未读和没有进行中任务时智能隐藏徽章
+  - 功能3：引入已读状态管理，基于localStorage持久化
+  - 最佳实践：Progressive Disclosure, Context Awareness, User Intent Recognition
+  - 文件：`src/components/GlobalTaskButton.tsx`
+  - 修改时间: 2024年12月19日 16:50
+- [x] **🎨 装饰图标精简优化**
+  - 需求：只保留4个核心产品图标（钥匙扣/手机壳/衣服/30+）
+  - 优化1：移除多余装饰图标，从6+个减少到4个核心产品
+  - 优化2：手机壳图标移至IP图片边缘，而非按键框下方
+  - 优化3：保持产品图标的hover缩放效果和边框样式
+  - 文件：`src/components/IPDetail.tsx` & `src/components/HeroSection.tsx`
+  - 修改时间: 2024年12月19日 17:20
+- [x] **✨ 保存按钮动效优化**
+  - 功能：为"保存IP形象"按钮添加微微跳动动效
+  - 效果：鼓励用户点击，提升转化率
+  - 实现：自定义gentle-bounce动画，2秒循环，优雅不突兀
+  - 细节：保存中时禁用动画，hover时切换为bounce效果
+  - 文件：`src/components/HeroSection.tsx` & `src/app/globals.css`
+  - 修改时间: 2024年12月19日 17:20
+- [x] **🎨 图标悬浮位置优化**
+  - 问题：图标嵌入在图片内部，视觉效果不佳
+  - 解决：图标改为悬浮在图片边缘外，真正的"悬浮"效果
+  - 调整1：手机壳图标从左上角下移120px，避免与30+重叠
+  - 调整2：衣服图标从右下角上移120px，平衡布局
+  - 调整3：增强阴影效果(shadow-xl)，突出悬浮感
+  - 调整4：钥匙扣和30+保持角落位置，形成视觉锚点
+  - 文件：`src/components/IPDetail.tsx` & `src/components/HeroSection.tsx`
+  - 修改时间: 2024年12月19日 17:40
+
+### UI改进详情
+**装饰图标系统：**
+- IP详情页：6个随机位置的静态图标（✨🎨🎭🎪🎀⭐）
+- 生成结果页：6个带动画的装饰图标（✨💖🌈👑🦋🚀）
+- 外围产品图标：7个周边商品展示图标
+
+**布局优化：**
+- 图片容器从 `object-contain` 改为 `object-cover` 
+- 固定高度 420px，确保一致的视觉效果
+- 装饰图标层叠在图片之上，不影响核心内容
+
+### 智能通知徽章详情
+**核心设计理念：**
+- **Progressive Disclosure（渐进式披露）**：只在必要时显示信息
+- **State Management（状态管理）**：跟踪用户的阅读状态
+- **Context Awareness（上下文感知）**：根据用户当前行为调整
+- **User Intent Recognition（用户意图识别）**：理解用户访问意图
+
+**显示逻辑：**
+1. 有处理中任务 → 始终显示（蓝色，旋转图标）
+2. 有失败任务 → 始终显示（红色，警告图标）
+3. 有未读完成任务 → 显示（绿色，完成图标）
+4. 所有任务已读且无新活动 → 隐藏
+
+**状态持久化：**
+- 基于localStorage存储用户级别的通知状态
+- 跟踪最后阅读时间戳和已读完成任务数量
+- 检测任务数量变化，自动重置状态
+
+**用户行为响应：**
+- 访问/tasks页面 → 自动标记当前完成任务为已读
+- 点击徽章 → 立即标记为已读并跳转
+- 路由变化监听 → 实时检测用户访问意图
+
+## 🎯 下一步计划
+- [ ] 检查项目功能是否正常
+- [ ] 确认Supabase连接状态
+- [ ] 测试主要功能模块
+- [ ] 优化服务器端渲染性能（如果需要）
+
+## 📝 最近修改
+- [x] 修改应用场景默认标签：从"个人用户"改为"创意设计师"
+  - 文件：`src/components/UseCases.tsx`
+  - 修改时间: 2024年12月19日 14:52
+- [x] **重大修复：gpt-4o-image API调用格式**
+  - 问题：API调用异常，返回空对象 `{}`
+  - 原因：图片传递格式不符合APICore标准
+  - 修复：将字符串拼接格式改为标准OpenAI Chat格式
+  - 文件：`src/lib/ai-api.ts` (tryAPICall & triggerSparrowGeneration函数)
+  - 参考文档：[APICore gpt-4o-image文档](https://doc.apicore.ai/api-301177866)
+  - 修复时间: 2024年12月19日 15:05
+- [x] **环境变量修复：添加缺失的AI_API_KEY**
+  - 问题："所有API配置都失败"的根本原因
+  - 修复：添加 `AI_API_KEY=sk-DudMcfHfR2LzzePep763GUhx9I5594RAciiegxG4EgrpGmos`
+  - 文件：`.env.local`
+  - 修复时间: 2024年12月19日 15:15
+- [x] **Next.js 15 兼容性修复：cookies() API**
+  - 问题：`cookies()` should be awaited before using its value
+  - 修复：将同步cookies调用改为async/await模式  
+  - 文件：`src/app/api/subscription/route.ts`
+  - 修复时间: 2024年12月19日 15:16
+- [x] **UI优化：IP形象展示页面效果改进**
+  - 优化1：IP效果图撑满容器，去除左右留白
+  - 优化2：添加随机装饰图标，始终跟随IP效果图
+  - 优化3：增加动画效果，提升视觉体验
+  - 文件：`src/components/IPDetail.tsx` & `src/components/HeroSection.tsx`
+  - 修改时间: 2024年12月19日 16:20
+- [x] **智能任务通知徽章优化 - Smart Notification Badge**
+  - 功能1：进入任务列表页面后自动清空完成任务提醒
+  - 功能2：没有未读和没有进行中任务时智能隐藏徽章
+  - 功能3：引入已读状态管理，基于localStorage持久化
+  - 最佳实践：Progressive Disclosure, Context Awareness, User Intent Recognition
+  - 文件：`src/components/GlobalTaskButton.tsx`
+  - 修改时间: 2024年12月19日 16:50
+- [x] **🎨 装饰图标精简优化**
+  - 需求：只保留4个核心产品图标（钥匙扣/手机壳/衣服/30+）
+  - 优化1：移除多余装饰图标，从6+个减少到4个核心产品
+  - 优化2：手机壳图标移至IP图片边缘，而非按键框下方
+  - 优化3：保持产品图标的hover缩放效果和边框样式
+  - 文件：`src/components/IPDetail.tsx` & `src/components/HeroSection.tsx`
+  - 修改时间: 2024年12月19日 17:20
+- [x] **✨ 保存按钮动效优化**
+  - 功能：为"保存IP形象"按钮添加微微跳动动效
+  - 效果：鼓励用户点击，提升转化率
+  - 实现：自定义gentle-bounce动画，2秒循环，优雅不突兀
+  - 细节：保存中时禁用动画，hover时切换为bounce效果
+  - 文件：`src/components/HeroSection.tsx` & `src/app/globals.css`
+  - 修改时间: 2024年12月19日 17:20
+- [x] **🎨 图标悬浮位置优化**
+  - 问题：图标嵌入在图片内部，视觉效果不佳
+  - 解决：图标改为悬浮在图片边缘外，真正的"悬浮"效果
+  - 调整1：手机壳图标从左上角下移120px，避免与30+重叠
+  - 调整2：衣服图标从右下角上移120px，平衡布局
+  - 调整3：增强阴影效果(shadow-xl)，突出悬浮感
+  - 调整4：钥匙扣和30+保持角落位置，形成视觉锚点
+  - 文件：`src/components/IPDetail.tsx` & `src/components/HeroSection.tsx`
+  - 修改时间: 2024年12月19日 17:40
+
+### UI改进详情
+**装饰图标系统：**
+- IP详情页：6个随机位置的静态图标（✨🎨🎭🎪🎀⭐）
+- 生成结果页：6个带动画的装饰图标（✨💖🌈👑🦋🚀）
+- 外围产品图标：7个周边商品展示图标
+
+**布局优化：**
+- 图片容器从 `object-contain` 改为 `object-cover` 
+- 固定高度 420px，确保一致的视觉效果
+- 装饰图标层叠在图片之上，不影响核心内容
+
+### 智能通知徽章详情
+**核心设计理念：**
+- **Progressive Disclosure（渐进式披露）**：只在必要时显示信息
+- **State Management（状态管理）**：跟踪用户的阅读状态
+- **Context Awareness（上下文感知）**：根据用户当前行为调整
+- **User Intent Recognition（用户意图识别）**：理解用户访问意图
+
+**显示逻辑：**
+1. 有处理中任务 → 始终显示（蓝色，旋转图标）
+2. 有失败任务 → 始终显示（红色，警告图标）
+3. 有未读完成任务 → 显示（绿色，完成图标）
+4. 所有任务已读且无新活动 → 隐藏
+
+**状态持久化：**
+- 基于localStorage存储用户级别的通知状态
+- 跟踪最后阅读时间戳和已读完成任务数量
+- 检测任务数量变化，自动重置状态
+
+**用户行为响应：**
+- 访问/tasks页面 → 自动标记当前完成任务为已读
+- 点击徽章 → 立即标记为已读并跳转
+- 路由变化监听 → 实时检测用户访问意图
+
+## 🎯 下一步计划
+- [ ] 检查项目功能是否正常
+- [ ] 确认Supabase连接状态
+- [ ] 测试主要功能模块
+- [ ] 优化服务器端渲染性能（如果需要）
+
+## 📝 最近修改
+- [x] 修改应用场景默认标签：从"个人用户"改为"创意设计师"
+  - 文件：`src/components/UseCases.tsx`
+  - 修改时间: 2024年12月19日 14:52
+- [x] **重大修复：gpt-4o-image API调用格式**
+  - 问题：API调用异常，返回空对象 `{}`
+  - 原因：图片传递格式不符合APICore标准
+  - 修复：将字符串拼接格式改为标准OpenAI Chat格式
+  - 文件：`src/lib/ai-api.ts` (tryAPICall & triggerSparrowGeneration函数)
+  - 参考文档：[APICore gpt-4o-image文档](https://doc.apicore.ai/api-301177866)
+  - 修复时间: 2024年12月19日 15:05
+- [x] **环境变量修复：添加缺失的AI_API_KEY**
+  - 问题："所有API配置都失败"的根本原因
+  - 修复：添加 `AI_API_KEY=sk-DudMcfHfR2LzzePep763GUhx9I5594RAciiegxG4EgrpGmos`
+  - 文件：`.env.local`
+  - 修复时间: 2024年12月19日 15:15
+- [x] **Next.js 15 兼容性修复：cookies() API**
+  - 问题：`cookies()` should be awaited before using its value
+  - 修复：将同步cookies调用改为async/await模式  
+  - 文件：`src/app/api/subscription/route.ts`
+  - 修复时间: 2024年12月19日 15:16
+- [x] **UI优化：IP形象展示页面效果改进**
+  - 优化1：IP效果图撑满容器，去除左右留白
+  - 优化2：添加随机装饰图标，始终跟随IP效果图
+  - 优化3：增加动画效果，提升视觉体验
+  - 文件：`src/components/IPDetail.tsx` & `src/components/HeroSection.tsx`
+  - 修改时间: 2024年12月19日 16:20
+- [x] **智能任务通知徽章优化 - Smart Notification Badge**
+  - 功能1：进入任务列表页面后自动清空完成任务提醒
+  - 功能2：没有未读和没有进行中任务时智能隐藏徽章
+  - 功能3：引入已读状态管理，基于localStorage持久化
+  - 最佳实践：Progressive Disclosure, Context Awareness, User Intent Recognition
+  - 文件：`src/components/GlobalTaskButton.tsx`
+  - 修改时间: 2024年12月19日 16:50
+- [x] **🎨 装饰图标精简优化**
+  - 需求：只保留4个核心产品图标（钥匙扣/手机壳/衣服/30+）
+  - 优化1：移除多余装饰图标，从6+个减少到4个核心产品
+  - 优化2：手机壳图标移至IP图片边缘，而非按键框下方
+  - 优化3：保持产品图标的hover缩放效果和边框样式
+  - 文件：`src/components/IPDetail.tsx` & `src/components/HeroSection.tsx`
+  - 修改时间: 2024年12月19日 17:20
+- [x] **✨ 保存按钮动效优化**
+  - 功能：为"保存IP形象"按钮添加微微跳动动效
+  - 效果：鼓励用户点击，提升转化率
+  - 实现：自定义gentle-bounce动画，2秒循环，优雅不突兀
+  - 细节：保存中时禁用动画，hover时切换为bounce效果
+  - 文件：`src/components/HeroSection.tsx` & `src/app/globals.css`
+  - 修改时间: 2024年12月19日 17:20
+- [x] **🎨 图标悬浮位置优化**
+  - 问题：图标嵌入在图片内部，视觉效果不佳
+  - 解决：图标改为悬浮在图片边缘外，真正的"悬浮"效果
+  - 调整1：手机壳图标从左上角下移120px，避免与30+重叠
+  - 调整2：衣服图标从右下角上移120px，平衡布局
+  - 调整3：增强阴影效果(shadow-xl)，突出悬浮感
+  - 调整4：钥匙扣和30+保持角落位置，形成视觉锚点
+  - 文件：`src/components/IPDetail.tsx` & `src/components/HeroSection.tsx`
+  - 修改时间: 2024年12月19日 17:40
+
+### UI改进详情
+**装饰图标系统：**
+- IP详情页：6个随机位置的静态图标（✨🎨🎭🎪🎀⭐）
+- 生成结果页：6个带动画的装饰图标（✨💖🌈👑🦋🚀）
+- 外围产品图标：7个周边商品展示图标
+
+**布局优化：**
+- 图片容器从 `object-contain` 改为 `object-cover` 
+- 固定高度 420px，确保一致的视觉效果
+- 装饰图标层叠在图片之上，不影响核心内容
+
+### 智能通知徽章详情
+**核心设计理念：**
+- **Progressive Disclosure（渐进式披露）**：只在必要时显示信息
+- **State Management（状态管理）**：跟踪用户的阅读状态
+- **Context Awareness（上下文感知）**：根据用户当前行为调整
+- **User Intent Recognition（用户意图识别）**：理解用户访问意图
+
+**显示逻辑：**
+1. 有处理中任务 → 始终显示（蓝色，旋转图标）
+2. 有失败任务 → 始终显示（红色，警告图标）
+3. 有未读完成任务 → 显示（绿色，完成图标）
+4. 所有任务已读且无新活动 → 隐藏
+
+**状态持久化：**
+- 基于localStorage存储用户级别的通知状态
+- 跟踪最后阅读时间戳和已读完成任务数量
+- 检测任务数量变化，自动重置状态
+
+**用户行为响应：**
+- 访问/tasks页面 → 自动标记当前完成任务为已读
+- 点击徽章 → 立即标记为已读并跳转
+- 路由变化监听 → 实时检测用户访问意图
+
+## 🎯 下一步计划
+- [ ] 检查项目功能是否正常
+- [ ] 确认Supabase连接状态
+- [ ] 测试主要功能模块
+- [ ] 优化服务器端渲染性能（如果需要）
+
+## 📝 最近修改
+- [x] 修改应用场景默认标签：从"个人用户"改为"创意设计师"
+  - 文件：`src/components/UseCases.tsx`
+  - 修改时间: 2024年12月19日 14:52
+- [x] **重大修复：gpt-4o-image API调用格式**
+  - 问题：API调用异常，返回空对象 `{}`
+  - 原因：图片传递格式不符合APICore标准
+  - 修复：将字符串拼接格式改为标准OpenAI Chat格式
+  - 文件：`src/lib/ai-api.ts` (tryAPICall & triggerSparrowGeneration函数)
+  - 参考文档：[APICore gpt-4o-image文档](https://doc.apicore.ai/api-301177866)
+  - 修复时间: 2024年12月19日 15:05
+- [x] **环境变量修复：添加缺失的AI_API_KEY**
+  - 问题："所有API配置都失败"的根本原因
+  - 修复：添加 `AI_API_KEY=sk-DudMcfHfR2LzzePep763GUhx9I5594RAciiegxG4EgrpGmos`
+  - 文件：`.env.local`
+  - 修复时间: 2024年12月19日 15:15
+- [x] **Next.js 15 兼容性修复：cookies() API**
+  - 问题：`cookies()` should be awaited before using its value
+  - 修复：将同步cookies调用改为async/await模式  
+  - 文件：`src/app/api/subscription/route.ts`
+  - 修复时间: 2024年12月19日 15:16
+- [x] **UI优化：IP形象展示页面效果改进**
+  - 优化1：IP效果图撑满容器，去除左右留白
+  - 优化2：添加随机装饰图标，始终跟随IP效果图
+  - 优化3：增加动画效果，提升视觉体验
+  - 文件：`src/components/IPDetail.tsx` & `src/components/HeroSection.tsx`
+  - 修改时间: 2024年12月19日 16:20
+- [x] **智能任务通知徽章优化 - Smart Notification Badge**
+  - 功能1：进入任务列表页面后自动清空完成任务提醒
+  - 功能2：没有未读和没有进行中任务时智能隐藏徽章
+  - 功能3：引入已读状态管理，基于localStorage持久化
+  - 最佳实践：Progressive Disclosure, Context Awareness, User Intent Recognition
+  - 文件：`src/components/GlobalTaskButton.tsx`
+  - 修改时间: 2024年12月19日 16:50
+- [x] **🎨 装饰图标精简优化**
+  - 需求：只保留4个核心产品图标（钥匙扣/手机壳/衣服/30+）
+  - 优化1：移除多余装饰图标，从6+个减少到4个核心产品
+  - 优化2：手机壳图标移至IP图片边缘，而非按键框下方
+  - 优化3：保持产品图标的hover缩放效果和边框样式
+  - 文件：`src/components/IPDetail.tsx` & `src/components/HeroSection.tsx`
+  - 修改时间: 2024年12月19日 17:20
+- [x] **✨ 保存按钮动效优化**
+  - 功能：为"保存IP形象"按钮添加微微跳动动效
+  - 效果：鼓励用户点击，提升转化率
+  - 实现：自定义gentle-bounce动画，2秒循环，优雅不突兀
+  - 细节：保存中时禁用动画，hover时切换为bounce效果
+  - 文件：`src/components/HeroSection.tsx` & `src/app/globals.css`
+  - 修改时间: 2024年12月19日 17:20
+- [x] **🎨 图标悬浮位置优化**
+  - 问题：图标嵌入在图片内部，视觉效果不佳
+  - 解决：图标改为悬浮在图片边缘外，真正的"悬浮"效果
+  - 调整1：手机壳图标从左上角下移120px，避免与30+重叠
+  - 调整2：衣服图标从右下角上移120px，平衡布局
+  - 调整3：增强阴影效果(shadow-xl)，突出悬浮感
+  - 调整4：钥匙扣和30+保持角落位置，形成视觉锚点
+  - 文件：`src/components/IPDetail.tsx` & `src/components/HeroSection.tsx`
+  - 修改时间: 2024年12月19日 17:40
+
+### UI改进详情
+**装饰图标系统：**
+- IP详情页：6个随机位置的静态图标（✨🎨🎭🎪🎀⭐）
+- 生成结果页：6个带动画的装饰图标（✨💖🌈👑🦋🚀）
+- 外围产品图标：7个周边商品展示图标
+
+**布局优化：**
+- 图片容器从 `object-contain` 改为 `object-cover` 
+- 固定高度 420px，确保一致的视觉效果
+- 装饰图标层叠在图片之上，不影响核心内容
+
+### 智能通知徽章详情
+**核心设计理念：**
+- **Progressive Disclosure（渐进式披露）**：只在必要时显示信息
+- **State Management（状态管理）**：跟踪用户的阅读状态
+- **Context Awareness（上下文感知）**：根据用户当前行为调整
+- **User Intent Recognition（用户意图识别）**：理解用户访问意图
+
+**显示逻辑：**
+1. 有处理中任务 → 始终显示（蓝色，旋转图标）
+2. 有失败任务 → 始终显示（红色，警告图标）
+3. 有未读完成任务 → 显示（绿色，完成图标）
+4. 所有任务已读且无新活动 → 隐藏
+
+**状态持久化：**
+- 基于localStorage存储用户级别的通知状态
+- 跟踪最后阅读时间戳和已读完成任务数量
+- 检测任务数量变化，自动重置状态
+
+**用户行为响应：**
+- 访问/tasks页面 → 自动标记当前完成任务为已读
+- 点击徽章 → 立即标记为已读并跳转
+- 路由变化监听 → 实时检测用户访问意图
+
+## 🎯 下一步计划
+- [ ] 检查项目功能是否正常
+- [ ] 确认Supabase连接状态
+- [ ] 测试主要功能模块
+- [ ] 优化服务器端渲染性能（如果需要）
+
+## 📝 最近修改
+- [x] 修改应用场景默认标签：从"个人用户"改为"创意设计师"
+  - 文件：`src/components/UseCases.tsx`
+  - 修改时间: 2024年12月19日 14:52
+- [x] **重大修复：gpt-4o-image API调用格式**
+  - 问题：API调用异常，返回空对象 `{}`
+  - 原因：图片传递格式不符合APICore标准
+  - 修复：将字符串拼接格式改为标准OpenAI Chat格式
+  - 文件：`src/lib/ai-api.ts` (tryAPICall & triggerSparrowGeneration函数)
+  - 参考文档：[APICore gpt-4o-image文档](https://doc.apicore.ai/api-301177866)
+  - 修复时间: 2024年12月19日 15:05
+- [x] **环境变量修复：添加缺失的AI_API_KEY**
+  - 问题："所有API配置都失败"的根本原因
+  - 修复：添加 `AI_API_KEY=sk-DudMcfHfR2LzzePep763GUhx9I5594RAciiegxG4EgrpGmos`
+  - 文件：`.env.local`
+  - 修复时间: 2024年12月19日 15:15
+- [x] **Next.js 15 兼容性修复：cookies() API**
+  - 问题：`cookies()` should be awaited before using its value
+  - 修复：将同步cookies调用改为async/await模式  
+  - 文件：`src/app/api/subscription/route.ts`
+  - 修复时间: 2024年12月19日 15:16
+- [x] **UI优化：IP形象展示页面效果改进**
+  - 优化1：IP效果图撑满容器，去除左右留白
+  - 优化2：添加随机装饰图标，始终跟随IP效果图
+  - 优化3：增加动画效果，提升视觉体验
+  - 文件：`src/components/IPDetail.tsx` & `src/components/HeroSection.tsx`
+  - 修改时间: 2024年12月19日 16:20
+- [x] **智能任务通知徽章优化 - Smart Notification Badge**
+  - 功能1：进入任务列表页面后自动清空完成任务提醒
+  - 功能2：没有未读和没有进行中任务时智能隐藏徽章
+  - 功能3：引入已读状态管理，基于localStorage持久化
+  - 最佳实践：Progressive Disclosure, Context Awareness, User Intent Recognition
+  - 文件：`src/components/GlobalTaskButton.tsx`
+  - 修改时间: 2024年12月19日 16:50
+- [x] **🎨 装饰图标精简优化**
+  - 需求：只保留4个核心产品图标（钥匙扣/手机壳/衣服/30+）
+  - 优化1：移除多余装饰图标，从6+个减少到4个核心产品
+  - 优化2：手机壳图标移至IP图片边缘，而非按键框下方
+  - 优化3：保持产品图标的hover缩放效果和边框样式
+  - 文件：`src/components/IPDetail.tsx` & `src/components/HeroSection.tsx`
+  - 修改时间: 2024年12月19日 17:20
+- [x] **✨ 保存按钮动效优化**
+  - 功能：为"保存IP形象"按钮添加微微跳动动效
+  - 效果：鼓励用户点击，提升转化率
+  - 实现：自定义gentle-bounce动画，2秒循环，优雅不突兀
+  - 细节：保存中时禁用动画，hover时切换为bounce效果
+  - 文件：`src/components/HeroSection.tsx` & `src/app/globals.css`
+  - 修改时间: 2024年12月19日 17:20
+- [x] **🎨 图标悬浮位置优化**
+  - 问题：图标嵌入在图片内部，视觉效果不佳
+  - 解决：图标改为悬浮在图片边缘外，真正的"悬浮"效果
+  - 调整1：手机壳图标从左上角下移120px，避免与30+重叠
+  - 调整2：衣服图标从右下角上移120px，平衡布局
+  - 调整3：增强阴影效果(shadow-xl)，突出悬浮感
+  - 调整4：钥匙扣和30+保持角落位置，形成视觉锚点
+  - 文件：`src/components/IPDetail.tsx` & `src/components/HeroSection.tsx`
+  - 修改时间: 2024年12月19日 17:40
+
+### UI改进详情
+**装饰图标系统：**
+- IP详情页：6个随机位置的静态图标（✨🎨🎭🎪🎀⭐）
+- 生成结果页：6个带动画的装饰图标（✨💖🌈👑🦋🚀）
+- 外围产品图标：7个周边商品展示图标
+
+**布局优化：**
+- 图片容器从 `object-contain` 改为 `object-cover` 
+- 固定高度 420px，确保一致的视觉效果
+- 装饰图标层叠在图片之上，不影响核心内容
+
+### 智能通知徽章详情
+**核心设计理念：**
+- **Progressive Disclosure（渐进式披露）**：只在必要时显示信息
+- **State Management（状态管理）**：跟踪用户的阅读状态
+- **Context Awareness（上下文感知）**：根据用户当前行为调整
+- **User Intent Recognition（用户意图识别）**：理解用户访问意图
+
+**显示逻辑：**
+1. 有处理中任务 → 始终显示（蓝色，旋转图标）
+2. 有失败任务 → 始终显示（红色，警告图标）
+3. 有未读完成任务 → 显示（绿色，完成图标）
+4. 所有任务已读且无新活动 → 隐藏
+
+**状态持久化：**
+- 基于localStorage存储用户级别的通知状态
+- 跟踪最后阅读时间戳和已读完成任务数量
+- 检测任务数量变化，自动重置状态
+
+**用户行为响应：**
+- 访问/tasks页面 → 自动标记当前完成任务为已读
+- 点击徽章 → 立即标记为已读并跳转
+- 路由变化监听 → 实时检测用户访问意图
+
+## 🎯 下一步计划
+- [ ] 检查项目功能是否正常
+- [ ] 确认Supabase连接状态
+- [ ] 测试主要功能模块
+- [ ] 优化服务器端渲染性能（如果需要）
+
+## 📝 最近修改
+- [x] 修改应用场景默认标签：从"个人用户"改为"创意设计师"
+  - 文件：`src/components/UseCases.tsx`
+  - 修改时间: 2024年12月19日 14:52
+- [x] **重大修复：gpt-4o-image API调用格式**
+  - 问题：API调用异常，返回空对象 `{}`
+  - 原因：图片传递格式不符合APICore标准
+  - 修复：将字符串拼接格式改为标准OpenAI Chat格式
+  - 文件：`src/lib/ai-api.ts` (tryAPICall & triggerSparrowGeneration函数)
+  - 参考文档：[APICore gpt-4o-image文档](https://doc.apicore.ai/api-301177866)
+  - 修复时间: 2024年12月19日 15:05
+- [x] **环境变量修复：添加缺失的AI_API_KEY**
+  - 问题："所有API配置都失败"的根本原因
+  - 修复：添加 `AI_API_KEY=sk-DudMcfHfR2LzzePep763GUhx9I5594RAciiegxG4EgrpGmos`
+  - 文件：`.env.local`
+  - 修复时间: 2024年12月19日 15:15
+- [x] **Next.js 15 兼容性修复：cookies() API**
+  - 问题：`cookies()` should be awaited before using its value
+  - 修复：将同步cookies调用改为async/await模式  
+  - 文件：`src/app/api/subscription/route.ts`
+  - 修复时间: 2024年12月19日 15:16
+- [x] **UI优化：IP形象展示页面效果改进**
+  - 优化1：IP效果图撑满容器，去除左右留白
+  - 优化2：添加随机装饰图标，始终跟随IP效果图
+  - 优化3：增加动画效果，提升视觉体验
+  - 文件：`src/components/IPDetail.tsx` & `src/components/HeroSection.tsx`
+  - 修改时间: 2024年12月19日 16:20
+- [x] **智能任务通知徽章优化 - Smart Notification Badge**
+  - 功能1：进入任务列表页面后自动清空完成任务提醒
+  - 功能2：没有未读和没有进行中任务时智能隐藏徽章
+  - 功能3：引入已读状态管理，基于localStorage持久化
+  - 最佳实践：Progressive Disclosure, Context Awareness, User Intent Recognition
+  - 文件：`src/components/GlobalTaskButton.tsx`
+  - 修改时间: 2024年12月19日 16:50
+- [x] **🎨 装饰图标精简优化**
+  - 需求：只保留4个核心产品图标（钥匙扣/手机壳/衣服/30+）
+  - 优化1：移除多余装饰图标，从6+个减少到4个核心产品
+  - 优化2：手机壳图标移至IP图片边缘，而非按键框下方
+  - 优化3：保持产品图标的hover缩放效果和边框样式
+  - 文件：`src/components/IPDetail.tsx` & `src/components/HeroSection.tsx`
+  - 修改时间: 2024年12月19日 17:20
+- [x] **✨ 保存按钮动效优化**
+  - 功能：为"保存IP形象"按钮添加微微跳动动效
+  - 效果：鼓励用户点击，提升转化率
+  - 实现：自定义gentle-bounce动画，2秒循环，优雅不突兀
+  - 细节：保存中时禁用动画，hover时切换为bounce效果
+  - 文件：`src/components/HeroSection.tsx` & `src/app/globals.css`
+  - 修改时间: 2024年12月19日 17:20
+- [x] **🎨 图标悬浮位置优化**
+  - 问题：图标嵌入在图片内部，视觉效果不佳
+  - 解决：图标改为悬浮在图片边缘外，真正的"悬浮"效果
+  - 调整1：手机壳图标从左上角下移120px，避免与30+重叠
+  - 调整2：衣服图标从右下角上移120px，平衡布局
+  - 调整3：增强阴影效果(shadow-xl)，突出悬浮感
+  - 调整4：钥匙扣和30+保持角落位置，形成视觉锚点
+  - 文件：`src/components/IPDetail.tsx` & `src/components/HeroSection.tsx`
+  - 修改时间: 2024年12月19日 17:40
+
+### UI改进详情
+**装饰图标系统：**
+- IP详情页：6个随机位置的静态图标（✨🎨🎭🎪🎀⭐）
+- 生成结果页：6个带动画的装饰图标（✨💖🌈👑🦋🚀）
+- 外围产品图标：7个周边商品展示图标
+
+**布局优化：**
+- 图片容器从 `object-contain` 改为 `object-cover` 
+- 固定高度 420px，确保一致的视觉效果
+- 装饰图标层叠在图片之上，不影响核心内容
+
+### 智能通知徽章详情
+**核心设计理念：**
+- **Progressive Disclosure（渐进式披露）**：只在必要时显示信息
+- **State Management（状态管理）**：跟踪用户的阅读状态
+- **Context Awareness（上下文感知）**：根据用户当前行为调整
+- **User Intent Recognition（用户意图识别）**：理解用户访问意图
+
+**显示逻辑：**
+1. 有处理中任务 → 始终显示（蓝色，旋转图标）
+2. 有失败任务 → 始终显示（红色，警告图标）
+3. 有未读完成任务 → 显示（绿色，完成图标）
+4. 所有任务已读且无新活动 → 隐藏
+
+**状态持久化：**
+- 基于localStorage存储用户级别的通知状态
+- 跟踪最后阅读时间戳和已读完成任务数量
+- 检测任务数量变化，自动重置状态
+
+**用户行为响应：**
+- 访问/tasks页面 → 自动标记当前完成任务为已读
+- 点击徽章 → 立即标记为已读并跳转
+- 路由变化监听 → 实时检测用户访问意图
+
+## 🎯 下一步计划
+- [ ] 检查项目功能是否正常
+- [ ] 确认Supabase连接状态
+- [ ] 测试主要功能模块
+- [ ] 优化服务器端渲染性能（如果需要）
+
+## 📝 最近修改
+- [x] 修改应用场景默认标签：从"个人用户"改为"创意设计师"
+  - 文件：`src/components/UseCases.tsx`
+  - 修改时间: 2024年12月19日 14:52
+- [x] **重大修复：gpt-4o-image API调用格式**
+  - 问题：API调用异常，返回空对象 `{}`
+  - 原因：图片传递格式不符合APICore标准
+  - 修复：将字符串拼接格式改为标准OpenAI Chat格式
+  - 文件：`src/lib/ai-api.ts` (tryAPICall & triggerSparrowGeneration函数)
+  - 参考文档：[APICore gpt-4o-image文档](https://doc.apicore.ai/api-301177866)
+  - 修复时间: 2024年12月19日 15:05
+- [x] **环境变量修复：添加缺失的AI_API_KEY**
+  - 问题："所有API配置都失败"的根本原因
+  - 修复：添加 `AI_API_KEY=sk-DudMcfHfR2LzzePep763GUhx9I5594RAciiegxG4EgrpGmos`
+  - 文件：`.env.local`
+  - 修复时间: 2024年12月19日 15:15
+- [x] **Next.js 15 兼容性修复：cookies() API**
+  - 问题：`cookies()` should be awaited before using its value
+  - 修复：将同步cookies调用改为async/await模式  
+  - 文件：`src/app/api/subscription/route.ts`
+  - 修复时间: 2024年12月19日 15:16
+- [x] **UI优化：IP形象展示页面效果改进**
+  - 优化1：IP效果图撑满容器，去除左右留白
+  - 优化2：添加随机装饰图标，始终跟随IP效果图
+  - 优化3：增加动画效果，提升视觉体验
+  - 文件：`src/components/IPDetail.tsx` & `src/components/HeroSection.tsx`
+  - 修改时间: 2024年12月19日 16:20
+- [x] **智能任务通知徽章优化 - Smart Notification Badge**
+  - 功能1：进入任务列表页面后自动清空完成任务提醒
+  - 功能2：没有未读和没有进行中任务时智能隐藏徽章
+  - 功能3：引入已读状态管理，基于localStorage持久化
+  - 最佳实践：Progressive Disclosure, Context Awareness, User Intent Recognition
+  - 文件：`src/components/GlobalTaskButton.tsx`
+  - 修改时间: 2024年12月19日 16:50
+- [x] **🎨 装饰图标精简优化**
+  - 需求：只保留4个核心产品图标（钥匙扣/手机壳/衣服/30+）
+  - 优化1：移除多余装饰图标，从6+个减少到4个核心产品
+  - 优化2：手机壳图标移至IP图片边缘，而非按键框下方
+  - 优化3：保持产品图标的hover缩放效果和边框样式
+  - 文件：`src/components/IPDetail.tsx` & `src/components/HeroSection.tsx`
+  - 修改时间: 2024年12月19日 17:20
+- [x] **✨ 保存按钮动效优化**
+  - 功能：为"保存IP形象"按钮添加微微跳动动效
+  - 效果：鼓励用户点击，提升转化率
+  - 实现：自定义gentle-bounce动画，2秒循环，优雅不突兀
+  - 细节：保存中时禁用动画，hover时切换为bounce效果
+  - 文件：`src/components/HeroSection.tsx` & `src/app/globals.css`
+  - 修改时间: 2024年12月19日 17:20
+- [x] **🎨 图标悬浮位置优化**
+  - 问题：图标嵌入在图片内部，视觉效果不佳
+  - 解决：图标改为悬浮在图片边缘外，真正的"悬浮"效果
+  - 调整1：手机壳图标从左上角下移120px，避免与30+重叠
+  - 调整2：衣服图标从右下角上移120px，平衡布局
+  - 调整3：增强阴影效果(shadow-xl)，突出悬浮感
+  - 调整4：钥匙扣和30+保持角落位置，形成视觉锚点
+  - 文件：`src/components/IPDetail.tsx` & `src/components/HeroSection.tsx`
+  - 修改时间: 2024年12月19日 17:40
+
+### UI改进详情
+**装饰图标系统：**
+- IP详情页：6个随机位置的静态图标（✨🎨🎭🎪🎀⭐）
+- 生成结果页：6个带动画的装饰图标（✨💖🌈👑🦋🚀）
+- 外围产品图标：7个周边商品展示图标
+
+**布局优化：**
+- 图片容器从 `object-contain` 改为 `object-cover` 
+- 固定高度 420px，确保一致的视觉效果
+- 装饰图标层叠在图片之上，不影响核心内容
+
+### 智能通知徽章详情
+**核心设计理念：**
+- **Progressive Disclosure（渐进式披露）**：只在必要时显示信息
+- **State Management（状态管理）**：跟踪用户的阅读状态
+- **Context Awareness（上下文感知）**：根据用户当前行为调整
+- **User Intent Recognition（用户意图识别）**：理解用户访问意图
+
+**显示逻辑：**
+1. 有处理中任务 → 始终显示（蓝色，旋转图标）
+2. 有失败任务 → 始终显示（红色，警告图标）
+3. 有未读完成任务 → 显示（绿色，完成图标）
+4. 所有任务已读且无新活动 → 隐藏
+
+**状态持久化：**
+- 基于localStorage存储用户级别的通知状态
+- 跟踪最后阅读时间戳和已读完成任务数量
+- 检测任务数量变化，自动重置状态
+
+**用户行为响应：**
+- 访问/tasks页面 → 自动标记当前完成任务为已读
+- 点击徽章 → 立即标记为已读并跳转
+- 路由变化监听 → 实时检测用户访问意图
+
+## 🎯 下一步计划
+- [ ] 检查项目功能是否正常
+- [ ] 确认Supabase连接状态
+- [ ] 测试主要功能模块
+- [ ] 优化服务器端渲染性能（如果需要）
+
+## 📝 最近修改
+- [x] 修改应用场景默认标签：从"个人用户"改为"创意设计师"
+  - 文件：`src/components/UseCases.tsx`
+  - 修改时间: 2024年12月19日 14:52
+- [x] **重大修复：gpt-4o-image API调用格式**
+  - 问题：API调用异常，返回空对象 `{}`
+  - 原因：图片传递格式不符合APICore标准
+  - 修复：将字符串拼接格式改为标准OpenAI Chat格式
+  - 文件：`src/lib/ai-api.ts` (tryAPICall & triggerSparrowGeneration函数)
+  - 参考文档：[APICore gpt-4o-image文档](https://doc.apicore.ai/api-301177866)
+  - 修复时间: 2024年12月19日 15:05
+- [x] **环境变量修复：添加缺失的AI_API_KEY**
+  - 问题："所有API配置都失败"的根本原因
+  - 修复：添加 `AI_API_KEY=sk-DudMcfHfR2LzzePep763GUhx9I5594RAciiegxG4EgrpGmos`
+  - 文件：`.env.local`
+  - 修复时间: 2024年12月19日 15:15
+- [x] **Next.js 15 兼容性修复：cookies() API**
+  - 问题：`cookies()` should be awaited before using its value
+  - 修复：将同步cookies调用改为async/await模式  
+  - 文件：`src/app/api/subscription/route.ts`
+  - 修复时间: 2024年12月19日 15:16
+- [x] **UI优化：IP形象展示页面效果改进**
+  - 优化1：IP效果图撑满容器，去除左右留白
+  - 优化2：添加随机装饰图标，始终跟随IP效果图
+  - 优化3：增加动画效果，提升视觉体验
+  - 文件：`src/components/IPDetail.tsx` & `src/components/HeroSection.tsx`
+  - 修改时间: 2024年12月19日 16:20
+- [x] **智能任务通知徽章优化 - Smart Notification Badge**
+  - 功能1：进入任务列表页面后自动清空完成任务提醒
+  - 功能2：没有未读和没有进行中任务时智能隐藏徽章
+  - 功能3：引入已读状态管理，基于localStorage持久化
+  - 最佳实践：Progressive Disclosure, Context Awareness, User Intent Recognition
+  - 文件：`src/components/GlobalTaskButton.tsx`
+  - 修改时间: 2024年12月19日 16:50
+- [x] **🎨 装饰图标精简优化**
+  - 需求：只保留4个核心产品图标（钥匙扣/手机壳/衣服/30+）
+  - 优化1：移除多余装饰图标，从6+个减少到4个核心产品
+  - 优化2：手机壳图标移至IP图片边缘，而非按键框下方
+  - 优化3：保持产品图标的hover缩放效果和边框样式
+  - 文件：`src/components/IPDetail.tsx` & `src/components/HeroSection.tsx`
+  - 修改时间: 2024年12月19日 17:20
+- [x] **✨ 保存按钮动效优化**
+  - 功能：为"保存IP形象"按钮添加微微跳动动效
+  - 效果：鼓励用户点击，提升转化率
+  - 实现：自定义gentle-bounce动画，2秒循环，优雅不突兀
+  - 细节：保存中时禁用动画，hover时切换为bounce效果
+  - 文件：`src/components/HeroSection.tsx` & `src/app/globals.css`
+  - 修改时间: 2024年12月19日 17:20
+- [x] **🎨 图标悬浮位置优化**
+  - 问题：图标嵌入在图片内部，视觉效果不佳
+  - 解决：图标改为悬浮在图片边缘外，真正的"悬浮"效果
+  - 调整1：手机壳图标从左上角下移120px，避免与30+重叠
+  - 调整2：衣服图标从右下角上移120px，平衡布局
+  - 调整3：增强阴影效果(shadow-xl)，突出悬浮感
+  - 调整4：钥匙扣和30+保持角落位置，形成视觉锚点
+  - 文件：`src/components/IPDetail.tsx` & `src/components/HeroSection.tsx`
+  - 修改时间: 2024年12月19日 17:40
+
+### UI改进详情
+**装饰图标系统：**
+- IP详情页：6个随机位置的静态图标（✨🎨🎭🎪🎀⭐）
+- 生成结果页：6个带动画的装饰图标（✨💖🌈👑🦋🚀）
+- 外围产品图标：7个周边商品展示图标
+
+**布局优化：**
+- 图片容器从 `object-contain` 改为 `object-cover` 
+- 固定高度 420px，确保一致的视觉效果
+- 装饰图标层叠在图片之上，不影响核心内容
+
+### 智能通知徽章详情
+**核心设计理念：**
+- **Progressive Disclosure（渐进式披露）**：只在必要时显示信息
+- **State Management（状态管理）**：跟踪用户的阅读状态
+- **Context Awareness（上下文感知）**：根据用户当前行为调整
+- **User Intent Recognition（用户意图识别）**：理解用户访问意图
+
+**显示逻辑：**
+1. 有处理中任务 → 始终显示（蓝色，旋转图标）
+2. 有失败任务 → 始终显示（红色，警告图标）
+3. 有未读完成任务 → 显示（绿色，完成图标）
+4. 所有任务已读且无新活动 → 隐藏
+
+**状态持久化：**
+- 基于localStorage存储用户级别的通知状态
+- 跟踪最后阅读时间戳和已读完成任务数量
+- 检测任务数量变化，自动重置状态
+
+**用户行为响应：**
+- 访问/tasks页面 → 自动标记当前完成任务为已读
+- 点击徽章 → 立即标记为已读并跳转
+- 路由变化监听 → 实时检测用户访问意图
+
+## 🎯 下一步计划
+- [ ] 检查项目功能是否正常
+- [ ] 确认Supabase连接状态
+- [ ] 测试主要功能模块
+- [ ] 优化服务器端渲染性能（如果需要）
+
+## 📝 最近修改
+- [x] 修改应用场景默认标签：从"个人用户"改为"创意设计师"
+  - 文件：`src/components/UseCases.tsx`
+  - 修改时间: 2024年12月19日 14:52
+- [x] **重大修复：gpt-4o-image API调用格式**
+  - 问题：API调用异常，返回空对象 `{}`
+  - 原因：图片传递格式不符合APICore标准
+  - 修复：将字符串拼接格式改为标准OpenAI Chat格式
+  - 文件：`src/lib/ai-api.ts` (tryAPICall & triggerSparrowGeneration函数)
+  - 参考文档：[APICore gpt-4o-image文档](https://doc.apicore.ai/api-301177866)
+  - 修复时间: 2024年12月19日 15:05
+- [x] **环境变量修复：添加缺失的AI_API_KEY**
+  - 问题："所有API配置都失败"的根本原因
+  - 修复：添加 `AI_API_KEY=sk-DudMcfHfR2LzzePep763GUhx9I5594RAciiegxG4EgrpGmos`
+  - 文件：`.env.local`
+  - 修复时间: 2024年12月19日 15:15
+- [x] **Next.js 15 兼容性修复：cookies() API**
+  - 问题：`cookies()` should be awaited before using its value
+  - 修复：将同步cookies调用改为async/await模式  
+  - 文件：`src/app/api/subscription/route.ts`
+  - 修复时间: 2024年12月19日 15:16
+- [x] **UI优化：IP形象展示页面效果改进**
+  - 优化1：IP效果图撑满容器，去除左右留白
+  - 优化2：添加随机装饰图标，始终跟随IP效果图
+  - 优化3：增加动画效果，提升视觉体验
+  - 文件：`src/components/IPDetail.tsx` & `src/components/HeroSection.tsx`
+  - 修改时间: 2024年12月19日 16:20
+- [x] **智能任务通知徽章优化 - Smart Notification Badge**
+  - 功能1：进入任务列表页面后自动清空完成任务提醒
+  - 功能2：没有未读和没有进行中任务时智能隐藏徽章
+  - 功能3：引入已读状态管理，基于localStorage持久化
+  - 最佳实践：Progressive Disclosure, Context Awareness, User Intent Recognition
+  - 文件：`src/components/GlobalTaskButton.tsx`
+  - 修改时间: 2024年12月19日 16:50
+- [x] **🎨 装饰图标精简优化**
+  - 需求：只保留4个核心产品图标（钥匙扣/手机壳/衣服/30+）
+  - 优化1：移除多余装饰图标，从6+个减少到4个核心产品
+  - 优化2：手机壳图标移至IP图片边缘，而非按键框下方
+  - 优化3：保持产品图标的hover缩放效果和边框样式
+  - 文件：`src/components/IPDetail.tsx` & `src/components/HeroSection.tsx`
+  - 修改时间: 2024年12月19日 17:20
+- [x] **✨ 保存按钮动效优化**
+  - 功能：为"保存IP形象"按钮添加微微跳动动效
+  - 效果：鼓励用户点击，提升转化率
+  - 实现：自定义gentle-bounce动画，2秒循环，优雅不突兀
+  - 细节：保存中时禁用动画，hover时切换为bounce效果
+  - 文件：`src/components/HeroSection.tsx` & `src/app/globals.css`
+  - 修改时间: 2024年12月19日 17:20
+- [x] **🎨 图标悬浮位置优化**
+  - 问题：图标嵌入在图片内部，视觉效果不佳
+  - 解决：图标改为悬浮在图片边缘外，真正的"悬浮"效果
+  - 调整1：手机壳图标从左上角下移120px，避免与30+重叠
+  - 调整2：衣服图标从右下角上移120px，平衡布局
+  - 调整3：增强阴影效果(shadow-xl)，突出悬浮感
+  - 调整4：钥匙扣和30+保持角落位置，形成视觉锚点
+  - 文件：`src/components/IPDetail.tsx` & `src/components/HeroSection.tsx`
+  - 修改时间: 2024年12月19日 17:40
+
+### UI改进详情
+**装饰图标系统：**
+- IP详情页：6个随机位置的静态图标（✨🎨🎭🎪🎀⭐）
+- 生成结果页：6个带动画的装饰图标（✨💖🌈👑🦋🚀）
+- 外围产品图标：7个周边商品展示图标
+
+**布局优化：**
+- 图片容器从 `object-contain` 改为 `object-cover` 
+- 固定高度 420px，确保一致的视觉效果
+- 装饰图标层叠在图片之上，不影响核心内容
+
+### 智能通知徽章详情
+**核心设计理念：**
+- **Progressive Disclosure（渐进式披露）**：只在必要时显示信息
+- **State Management（状态管理）**：跟踪用户的阅读状态
+- **Context Awareness（上下文感知）**：根据用户当前行为调整
+- **User Intent Recognition（用户意图识别）**：理解用户访问意图
+
+**显示逻辑：**
+1. 有处理中任务 → 始终显示（蓝色，旋转图标）
+2. 有失败任务 → 始终显示（红色，警告图标）
+3. 有未读完成任务 → 显示（绿色，完成图标）
+4. 所有任务已读且无新活动 → 隐藏
+
+**状态持久化：**
+- 基于localStorage存储用户级别的通知状态
+- 跟踪最后阅读时间戳和已读完成任务数量
+- 检测任务数量变化，自动重置状态
+
+**用户行为响应：**
+- 访问/tasks页面 → 自动标记当前完成任务为已读
+- 点击徽章 → 立即标记为已读并跳转
+- 路由变化监听 → 实时检测用户访问意图
+
+## 🎯 下一步计划
+- [ ] 检查项目功能是否正常
+- [ ] 确认Supabase连接状态
+- [ ] 测试主要功能模块
+- [ ] 优化服务器端渲染性能（如果需要）
+
+## 📝 最近修改
+- [x] 修改应用场景默认标签：从"个人用户"改为"创意设计师"
+  - 文件：`src/components/UseCases.tsx`
+  - 修改时间: 2024年12月19日 14:52
+- [x] **重大修复：gpt-4o-image API调用格式**
+  - 问题：API调用异常，返回空对象 `{}`
+  - 原因：图片传递格式不符合APICore标准
+  - 修复：将字符串拼接格式改为标准OpenAI Chat格式
+  - 文件：`src/lib/ai-api.ts` (tryAPICall & triggerSparrowGeneration函数)
+  - 参考文档：[APICore gpt-4o-image文档](https://doc.apicore.ai/api-301177866)
+  - 修复时间: 2024年12月19日 15:05
+- [x] **环境变量修复：添加缺失的AI_API_KEY**
+  - 问题："所有API配置都失败"的根本原因
+  - 修复：添加 `AI_API_KEY=sk-DudMcfHfR2LzzePep763GUhx9I5594RAciiegxG4EgrpGmos`
+  - 文件：`.env.local`
+  - 修复时间: 2024年12月19日 15:15
+- [x] **Next.js 15 兼容性修复：cookies() API**
+  - 问题：`cookies()` should be awaited before using its value
+  - 修复：将同步cookies调用改为async/await模式  
+  - 文件：`src/app/api/subscription/route.ts`
+  - 修复时间: 2024年12月19日 15:16
+- [x] **UI优化：IP形象展示页面效果改进**
+  - 优化1：IP效果图撑满容器，去除左右留白
+  - 优化2：添加随机装饰图标，始终跟随IP效果图
+  - 优化3：增加动画效果，提升视觉体验
+  - 文件：`src/components/IPDetail.tsx` & `src/components/HeroSection.tsx`
+  - 修改时间: 2024年12月19日 16:20
+- [x] **智能任务通知徽章优化 - Smart Notification Badge**
+  - 功能1：进入任务列表页面后自动清空完成任务提醒
+  - 功能2：没有未读和没有进行中任务时智能隐藏徽章
+  - 功能3：引入已读状态管理，基于localStorage持久化
+  - 最佳实践：Progressive Disclosure, Context Awareness, User Intent Recognition
+  - 文件：`src/components/GlobalTaskButton.tsx`
+  - 修改时间: 2024年12月19日 16:50
+- [x] **🎨 装饰图标精简优化**
+  - 需求：只保留4个核心产品图标（钥匙扣/手机壳/衣服/30+）
+  - 优化1：移除多余装饰图标，从6+个减少到4个核心产品
+  - 优化2：手机壳图标移至IP图片边缘，而非按键框下方
+  - 优化3：保持产品图标的hover缩放效果和边框样式
+  - 文件：`src/components/IPDetail.tsx` & `src/components/HeroSection.tsx`
+  - 修改时间: 2024年12月19日 17:20
+- [x] **✨ 保存按钮动效优化**
+  - 功能：为"保存IP形象"按钮添加微微跳动动效
+  - 效果：鼓励用户点击，提升转化率
+  - 实现：自定义gentle-bounce动画，2秒循环，优雅不突兀
+  - 细节：保存中时禁用动画，hover时切换为bounce效果
+  - 文件：`src/components/HeroSection.tsx` & `src/app/globals.css`
+  - 修改时间: 2024年12月19日 17:20
+- [x] **🎨 图标悬浮位置优化**
+  - 问题：图标嵌入在图片内部，视觉效果不佳
+  - 解决：图标改为悬浮在图片边缘外，真正的"悬浮"效果
+  - 调整1：手机壳图标从左上角下移120px，避免与30+重叠
+  - 调整2：衣服图标从右下角上移120px，平衡布局
+  - 调整3：增强阴影效果(shadow-xl)，突出悬浮感
+  - 调整4：钥匙扣和30+保持角落位置，形成视觉锚点
+  - 文件：`src/components/IPDetail.tsx` & `src/components/HeroSection.tsx`
+  - 修改时间: 2024年12月19日 17:40
+
+### UI改进详情
+**装饰图标系统：**
+- IP详情页：6个随机位置的静态图标（✨🎨🎭🎪🎀⭐）
+- 生成结果页：6个带动画的装饰图标（✨💖🌈👑🦋🚀）
+- 外围产品图标：7个周边商品展示图标
+
+**布局优化：**
+- 图片容器从 `object-contain` 改为 `object-cover` 
+- 固定高度 420px，确保一致的视觉效果
+- 装饰图标层叠在图片之上，不影响核心内容
+
+### 智能通知徽章详情
+**核心设计理念：**
+- **Progressive Disclosure（渐进式披露）**：只在必要时显示信息
+- **State Management（状态管理）**：跟踪用户的阅读状态
+- **Context Awareness（上下文感知）**：根据用户当前行为调整
+- **User Intent Recognition（用户意图识别）**：理解用户访问意图
+
+**显示逻辑：**
+1. 有处理中任务 → 始终显示（蓝色，旋转图标）
+2. 有失败任务 → 始终显示（红色，警告图标）
+3. 有未读完成任务 → 显示（绿色，完成图标）
+4. 所有任务已读且无新活动 → 隐藏
+
+**状态持久化：**
+- 基于localStorage存储用户级别的通知状态
+- 跟踪最后阅读时间戳和已读完成任务数量
+- 检测任务数量变化，自动重置状态
+
+**用户行为响应：**
+- 访问/tasks页面 → 自动标记当前完成任务为已读
+- 点击徽章 → 立即标记为已读并跳转
+- 路由变化监听 → 实时检测用户访问意图
+
+## 🎯 下一步计划
+- [ ] 检查项目功能是否正常
+- [ ] 确认Supabase连接状态
+- [ ] 测试主要功能模块
+- [ ] 优化服务器端渲染性能（如果需要）
+
+## 📝 最近修改
+- [x] 修改应用场景默认标签：从"个人用户"改为"创意设计师"
+  - 文件：`src/components/UseCases.tsx`
+  - 修改时间: 2024年12月19日 14:52
+- [x] **重大修复：gpt-4o-image API调用格式**
+  - 问题：API调用异常，返回空对象 `{}`
+  - 原因：图片传递格式不符合APICore标准
+  - 修复：将字符串拼接格式改为标准OpenAI Chat格式
+  - 文件：`src/lib/ai-api.ts` (tryAPICall & triggerSparrowGeneration函数)
+  - 参考文档：[APICore gpt-4o-image文档](https://doc.apicore.ai/api-301177866)
+  - 修复时间: 2024年12月19日 15:05
+- [x] **环境变量修复：添加缺失的AI_API_KEY**
+  - 问题："所有API配置都失败"的根本原因
+  - 修复：添加 `AI_API_KEY=sk-DudMcfHfR2LzzePep763GUhx9I5594RAciiegxG4EgrpGmos`
+  - 文件：`.env.local`
+  - 修复时间: 2024年12月19日 15:15
+- [x] **Next.js 15 兼容性修复：cookies() API**
+  - 问题：`cookies()` should be awaited before using its value
+  - 修复：将同步cookies调用改为async/await模式  
+  - 文件：`src/app/api/subscription/route.ts`
+  - 修复时间: 2024年12月19日 15:16
+- [x] **UI优化：IP形象展示页面效果改进**
+  - 优化1：IP效果图撑满容器，去除左右留白
+  - 优化2：添加随机装饰图标，始终跟随IP效果图
+  - 优化3：增加动画效果，提升视觉体验
+  - 文件：`src/components/IPDetail.tsx` & `src/components/HeroSection.tsx`
+  - 修改时间: 2024年12月19日 16:20
+- [x] **智能任务通知徽章优化 - Smart Notification Badge**
+  - 功能1：进入任务列表页面后自动清空完成任务提醒
+  - 功能2：没有未读和没有进行中任务时智能隐藏徽章
+  - 功能3：引入已读状态管理，基于localStorage持久化
+  - 最佳实践：Progressive Disclosure, Context Awareness, User Intent Recognition
+  - 文件：`src/components/GlobalTaskButton.tsx`
+  - 修改时间: 2024年12月19日 16:50
+- [x] **🎨 装饰图标精简优化**
+  - 需求：只保留4个核心产品图标（钥匙扣/手机壳/衣服/30+）
+  - 优化1：移除多余装饰图标，从6+个减少到4个核心产品
+  - 优化2：手机壳图标移至IP图片边缘，而非按键框下方
+  - 优化3：保持产品图标的hover缩放效果和边框样式
+  - 文件：`src/components/IPDetail.tsx` & `src/components/HeroSection.tsx`
+  - 修改时间: 2024年12月19日 17:20
+- [x] **✨ 保存按钮动效优化**
+  - 功能：为"保存IP形象"按钮添加微微跳动动效
+  - 效果：鼓励用户点击，提升转化率
+  - 实现：自定义gentle-bounce动画，2秒循环，优雅不突兀
+  - 细节：保存中时禁用动画，hover时切换为bounce效果
+  - 文件：`src/components/HeroSection.tsx` & `src/app/globals.css`
+  - 修改时间: 2024年12月19日 17:20
+- [x] **🎨 图标悬浮位置优化**
+  - 问题：图标嵌入在图片内部，视觉效果不佳
+  - 解决：图标改为悬浮在图片边缘外，真正的"悬浮"效果
+  - 调整1：手机壳图标从左上角下移120px，避免与30+重叠
+  - 调整2：衣服图标从右下角上移120px，平衡布局
+  - 调整3：增强阴影效果(shadow-xl)，突出悬浮感
+  - 调整4：钥匙扣和30+保持角落位置，形成视觉锚点
+  - 文件：`src/components/IPDetail.tsx` & `src/components/HeroSection.tsx`
+  - 修改时间: 2024年12月19日 17:40
+
+### UI改进详情
+**装饰图标系统：**
+- IP详情页：6个随机位置的静态图标（✨🎨🎭🎪🎀⭐）
+- 生成结果页：6个带动画的装饰图标（✨💖🌈👑🦋🚀）
+- 外围产品图标：7个周边商品展示图标
+
+**布局优化：**
+- 图片容器从 `object-contain` 改为 `object-cover` 
+- 固定高度 420px，确保一致的视觉效果
+- 装饰图标层叠在图片之上，不影响核心内容
+
+### 智能通知徽章详情
+**核心设计理念：**
+- **Progressive Disclosure（渐进式披露）**：只在必要时显示信息
+- **State Management（状态管理）**：跟踪用户的阅读状态
+- **Context Awareness（上下文感知）**：根据用户当前行为调整
+- **User Intent Recognition（用户意图识别）**：理解用户访问意图
+
+**显示逻辑：**
+1. 有处理中任务 → 始终显示（蓝色，旋转图标）
+2. 有失败任务 → 始终显示（红色，警告图标）
+3. 有未读完成任务 → 显示（绿色，完成图标）
+4. 所有任务已读且无新活动 → 隐藏
+
+**状态持久化：**
+- 基于localStorage存储用户级别的通知状态
+- 跟踪最后阅读时间戳和已读完成任务数量
+- 检测任务数量变化，自动重置状态
+
+**用户行为响应：**
+- 访问/tasks页面 → 自动标记当前完成任务为已读
+- 点击徽章 → 立即标记为已读并跳转
+- 路由变化监听 → 实时检测用户访问意图
+
+## 🎯 下一步计划
+- [ ] 检查项目功能是否正常
+- [ ] 确认Supabase连接状态
+- [ ] 测试主要功能模块
+- [ ] 优化服务器端渲染性能（如果需要）
+
+## 📝 最近修改
+- [x] 修改应用场景默认标签：从"个人用户"改为"创意设计师"
+  - 文件：`src/components/UseCases.tsx`
+  - 修改时间: 2024年12月19日 14:52
+- [x] **重大修复：gpt-4o-image API调用格式**
+  - 问题：API调用异常，返回空对象 `{}`
+  - 原因：图片传递格式不符合APICore标准
+  - 修复：将字符串拼接格式改为标准OpenAI Chat格式
+  - 文件：`src/lib/ai-api.ts` (tryAPICall & triggerSparrowGeneration函数)
+  - 参考文档：[APICore gpt-4o-image文档](https://doc.apicore.ai/api-301177866)
+  - 修复时间: 2024年12月19日 15:05
+- [x] **环境变量修复：添加缺失的AI_API_KEY**
+  - 问题："所有API配置都失败"的根本原因
+  - 修复：添加 `AI_API_KEY=sk-DudMcfHfR2LzzePep763GUhx9I5594RAciiegxG4EgrpGmos`
+  - 文件：`.env.local`
+  - 修复时间: 2024年12月19日 15:15
+- [x] **Next.js 15 兼容性修复：cookies() API**
+  - 问题：`cookies()` should be awaited before using its value
+  - 修复：将同步cookies调用改为async/await模式  
+  - 文件：`src/app/api/subscription/route.ts`
+  - 修复时间: 2024年12月19日 15:16
+- [x] **UI优化：IP形象展示页面效果改进**
+  - 优化1：IP效果图撑满容器，去除左右留白
+  - 优化2：添加随机装饰图标，始终跟随IP效果图
+  - 优化3：增加动画效果，提升视觉体验
+  - 文件：`src/components/IPDetail.tsx` & `src/components/HeroSection.tsx`
+  - 修改时间: 2024年12月19日 16:20
+- [x] **智能任务通知徽章优化 - Smart Notification Badge**
+  - 功能1：进入任务列表页面后自动清空完成任务提醒
+  - 功能2：没有未读和没有进行中任务时智能隐藏徽章
+  - 功能3：引入已读状态管理，基于localStorage持久化
+  - 最佳实践：Progressive Disclosure, Context Awareness, User Intent Recognition
+  - 文件：`src/components/GlobalTaskButton.tsx`
+  - 修改时间: 2024年12月19日 16:50
+- [x] **🎨 装饰图标精简优化**
+  - 需求：只保留4个核心产品图标（钥匙扣/手机壳/衣服/30+）
+  - 优化1：移除多余装饰图标，从6+个减少到4个核心产品
+  - 优化2：手机壳图标移至IP图片边缘，而非按键框下方
+  - 优化3：保持产品图标的hover缩放效果和边框样式
+  - 文件：`src/components/IPDetail.tsx` & `src/components/HeroSection.tsx`
+  - 修改时间: 2024年12月19日 17:20
+- [x] **✨ 保存按钮动效优化**
+  - 功能：为"保存IP形象"按钮添加微微跳动动效
+  - 效果：鼓励用户点击，提升转化率
+  - 实现：自定义gentle-bounce动画，2秒循环，优雅不突兀
+  - 细节：保存中时禁用动画，hover时切换为bounce效果
+  - 文件：`src/components/HeroSection.tsx` & `src/app/globals.css`
+  - 修改时间: 2024年12月19日 17:20
+- [x] **🎨 图标悬浮位置优化**
+  - 问题：图标嵌入在图片内部，视觉效果不佳
+  - 解决：图标改为悬浮在图片边缘外，真正的"悬浮"效果
+  - 调整1：手机壳图标从左上角下移120px，避免与30+重叠
+  - 调整2：衣服图标从右下角上移120px，平衡布局
+  - 调整3：增强阴影效果(shadow-xl)，突出悬浮感
+  - 调整4：钥匙扣和30+保持角落位置，形成视觉锚点
+  - 文件：`src/components/IPDetail.tsx` & `src/components/HeroSection.tsx`
+  - 修改时间: 2024年12月19日 17:40
+
+### UI改进详情
+**装饰图标系统：**
+- IP详情页：6个随机位置的静态图标（✨🎨🎭🎪🎀⭐）
+- 生成结果页：6个带动画的装饰图标（✨💖🌈👑🦋🚀）
+- 外围产品图标：7个周边商品展示图标
+
+**布局优化：**
+- 图片容器从 `object-contain` 改为 `object-cover` 
+- 固定高度 420px，确保一致的视觉效果
+- 装饰图标层叠在图片之上，不影响核心内容
+
+### 智能通知徽章详情
+**核心设计理念：**
+- **Progressive Disclosure（渐进式披露）**：只在必要时显示信息
+- **State Management（状态管理）**：跟踪用户的阅读状态
+- **Context Awareness（上下文感知）**：根据用户当前行为调整
+- **User Intent Recognition（用户意图识别）**：理解用户访问意图
+
+**显示逻辑：**
+1. 有处理中任务 → 始终显示（蓝色，旋转图标）
+2. 有失败任务 → 始终显示（红色，警告图标）
+3. 有未读完成任务 → 显示（绿色，完成图标）
+4. 所有任务已读且无新活动 → 隐藏
+
+**状态持久化：**
+- 基于localStorage存储用户级别的通知状态
+- 跟踪最后阅读时间戳和已读完成任务数量
+- 检测任务数量变化，自动重置状态
+
+**用户行为响应：**
+- 访问/tasks页面 → 自动标记当前完成任务为已读
+- 点击徽章 → 立即标记为已读并跳转
+- 路由变化监听 → 实时检测用户访问意图
+
+## 🎯 下一步计划
+- [ ] 检查项目功能是否正常
+- [ ] 确认Supabase连接状态
+- [ ] 测试主要功能模块
+- [ ] 优化服务器端渲染性能（如果需要）
+
+## 📝 最近修改
+- [x] 修改应用场景默认标签：从"个人用户"改为"创意设计师"
+  - 文件：`src/components/UseCases.tsx`
+  - 修改时间: 2024年12月19日 14:52
+- [x] **重大修复：gpt-4o-image API调用格式**
+  - 问题：API调用异常，返回空对象 `{}`
+  - 原因：图片传递格式不符合APICore标准
+  - 修复：将字符串拼接格式改为标准OpenAI Chat格式
+  - 文件：`src/lib/ai-api.ts` (tryAPICall & triggerSparrowGeneration函数)
+  - 参考文档：[APICore gpt-4o-image文档](https://doc.apicore.ai/api-301177866)
+  - 修复时间: 2024年12月19日 15:05
+- [x] **环境变量修复：添加缺失的AI_API_KEY**
+  - 问题："所有API配置都失败"的根本原因
+  - 修复：添加 `AI_API_KEY=sk-DudMcfHfR2LzzePep763GUhx9I5594RAciiegxG4EgrpGmos`
+  - 文件：`.env.local`
+  - 修复时间: 2024年12月19日 15:15
+- [x] **Next.js 15 兼容性修复：cookies() API**
+  - 问题：`cookies()` should be awaited before using its value
+  - 修复：将同步cookies调用改为async/await模式  
+  - 文件：`src/app/api/subscription/route.ts`
+  - 修复时间: 2024年12月19日 15:16
+- [x] **UI优化：IP形象展示页面效果改进**
+  - 优化1：IP效果图撑满容器，去除左右留白
+  - 优化2：添加随机装饰图标，始终跟随IP效果图
+  - 优化3：增加动画效果，提升视觉体验
+  - 文件：`src/components/IPDetail.tsx` & `src/components/HeroSection.tsx`
+  - 修改时间: 2024年12月19日 16:20
+- [x] **智能任务通知徽章优化 - Smart Notification Badge**
+  - 功能1：进入任务列表页面后自动清空完成任务提醒
+  - 功能2：没有未读和没有进行中任务时智能隐藏徽章
+  - 功能3：引入已读状态管理，基于localStorage持久化
+  - 最佳实践：Progressive Disclosure, Context Awareness, User Intent Recognition
+  - 文件：`src/components/GlobalTaskButton.tsx`
+  - 修改时间: 2024年12月19日 16:50
+- [x] **🎨 装饰图标精简优化**
+  - 需求：只保留4个核心产品图标（钥匙扣/手机壳/衣服/30+）
+  - 优化1：移除多余装饰图标，从6+个减少到4个核心产品
+  - 优化2：手机壳图标移至IP图片边缘，而非按键框下方
+  - 优化3：保持产品图标的hover缩放效果和边框样式
+  - 文件：`src/components/IPDetail.tsx` & `src/components/HeroSection.tsx`
+  - 修改时间: 2024年12月19日 17:20
+- [x] **✨ 保存按钮动效优化**
+  - 功能：为"保存IP形象"按钮添加微微跳动动效
+  - 效果：鼓励用户点击，提升转化率
+  - 实现：自定义gentle-bounce动画，2秒循环，优雅不突兀
+  - 细节：保存中时禁用动画，hover时切换为bounce效果
+  - 文件：`src/components/HeroSection.tsx` & `src/app/globals.css`
+  - 修改时间: 2024年12月19日 17:20
+- [x] **🎨 图标悬浮位置优化**
+  - 问题：图标嵌入在图片内部，视觉效果不佳
+  - 解决：图标改为悬浮在图片边缘外，真正的"悬浮"效果
+  - 调整1：手机壳图标从左上角下移120px，避免与30+重叠
+  - 调整2：衣服图标从右下角上移120px，平衡布局
+  - 调整3：增强阴影效果(shadow-xl)，突出悬浮感
+  - 调整4：钥匙扣和30+保持角落位置，形成视觉锚点
+  - 文件：`src/components/IPDetail.tsx` & `src/components/HeroSection.tsx`
+  - 修改时间: 2024年12月19日 17:40
+
+### UI改进详情
+**装饰图标系统：**
+- IP详情页：6个随机位置的静态图标（✨🎨🎭🎪🎀⭐）
+- 生成结果页：6个带动画的装饰图标（✨💖🌈👑🦋🚀）
+- 外围产品图标：7个周边商品展示图标
+
+**布局优化：**
+- 图片容器从 `object-contain` 改为 `object-cover` 
+- 固定高度 420px，确保一致的视觉效果
+- 装饰图标层叠在图片之上，不影响核心内容
+
+### 智能通知徽章详情
+**核心设计理念：**
+- **Progressive Disclosure（渐进式披露）**：只在必要时显示信息
+- **State Management（状态管理）**：跟踪用户的阅读状态
+- **Context Awareness（上下文感知）**：根据用户当前行为调整
+- **User Intent Recognition（用户意图识别）**：理解用户访问意图
+
+**显示逻辑：**
+1. 有处理中任务 → 始终显示（蓝色，旋转图标）
+2. 有失败任务 → 始终显示（红色，警告图标）
+3. 有未读完成任务 → 显示（绿色，完成图标）
+4. 所有任务已读且无新活动 → 隐藏
+
+**状态持久化：**
+- 基于localStorage存储用户级别的通知状态
+- 跟踪最后阅读时间戳和已读完成任务数量
+- 检测任务数量变化，自动重置状态
+
+**用户行为响应：**
+- 访问/tasks页面 → 自动标记当前完成任务为已读
+- 点击徽章 → 立即标记为已读并跳转
+- 路由变化监听 → 实时检测用户访问意图
+
+## 🎯 下一步计划
+- [ ] 检查项目功能是否正常
+- [ ] 确认Supabase连接状态
+- [ ] 测试主要功能模块
+- [ ] 优化服务器端渲染性能（如果需要）
+
+## 📝 最近修改
+- [x] 修改应用场景默认标签：从"个人用户"改为"创意设计师"
+  - 文件：`src/components/UseCases.tsx`
+  - 修改时间: 2024年12月19日 14:52
+- [x] **重大修复：gpt-4o-image API调用格式**
+  - 问题：API调用异常，返回空对象 `{}`
+  - 原因：图片传递格式不符合APICore标准
+  - 修复：将字符串拼接格式改为标准OpenAI Chat格式
+  - 文件：`src/lib/ai-api.ts` (tryAPICall & triggerSparrowGeneration函数)
+  - 参考文档：[APICore gpt-4o-image文档](https://doc.apicore.ai/api-301177866)
+  - 修复时间: 2024年12月19日 15:05
+- [x] **环境变量修复：添加缺失的AI_API_KEY**
+  - 问题："所有API配置都失败"的根本原因
+  - 修复：添加 `AI_API_KEY=sk-DudMcfHfR2LzzePep763GUhx9I5594RAciiegxG4EgrpGmos`
+  - 文件：`.env.local`
+  - 修复时间: 2024年12月19日 15:15
+- [x] **Next.js 15 兼容性修复：cookies() API**
+  - 问题：`cookies()` should be awaited before using its value
+  - 修复：将同步cookies调用改为async/await模式  
+  - 文件：`src/app/api/subscription/route.ts`
+  - 修复时间: 2024年12月19日 15:16
+- [x] **UI优化：IP形象展示页面效果改进**
+  - 优化1：IP效果图撑满容器，去除左右留白
+  - 优化2：添加随机装饰图标，始终跟随IP效果图
+  - 优化3：增加动画效果，提升视觉体验
+  - 文件：`src/components/IPDetail.tsx` & `src/components/HeroSection.tsx`
+  - 修改时间: 2024年12月19日 16:20
+- [x] **智能任务通知徽章优化 - Smart Notification Badge**
+  - 功能1：进入任务列表页面后自动清空完成任务提醒
+  - 功能2：没有未读和没有进行中任务时智能隐藏徽章
+  - 功能3：引入已读状态管理，基于localStorage持久化
+  - 最佳实践：Progressive Disclosure, Context Awareness, User Intent Recognition
+  - 文件：`src/components/GlobalTaskButton.tsx`
+  - 修改时间: 2024年12月19日 16:50
+- [x] **🎨 装饰图标精简优化**
+  - 需求：只保留4个核心产品图标（钥匙扣/手机壳/衣服/30+）
+  - 优化1：移除多余装饰图标，从6+个减少到4个核心产品
+  - 优化2：手机壳图标移至IP图片边缘，而非按键框下方
+  - 优化3：保持产品图标的hover缩放效果和边框样式
+  - 文件：`src/components/IPDetail.tsx` & `src/components/HeroSection.tsx`
+  - 修改时间: 2024年12月19日 17:20
+- [x] **✨ 保存按钮动效优化**
+  - 功能：为"保存IP形象"按钮添加微微跳动动效
+  - 效果：鼓励用户点击，提升转化率
+  - 实现：自定义gentle-bounce动画，2秒循环，优雅不突兀
+  - 细节：保存中时禁用动画，hover时切换为bounce效果
+  - 文件：`src/components/HeroSection.tsx` & `src/app/globals.css`
+  - 修改时间: 2024年12月19日 17:20
+- [x] **🎨 图标悬浮位置优化**
+  - 问题：图标嵌入在图片内部，视觉效果不佳
+  - 解决：图标改为悬浮在图片边缘外，真正的"悬浮"效果
+  - 调整1：手机壳图标从左上角下移120px，避免与30+重叠
+  - 调整2：衣服图标从右下角上移120px，平衡布局
+  - 调整3：增强阴影效果(shadow-xl)，突出悬浮感
+  - 调整4：钥匙扣和30+保持角落位置，形成视觉锚点
+  - 文件：`src/components/IPDetail.tsx` & `src/components/HeroSection.tsx`
+  - 修改时间: 2024年12月19日 17:40
+
+### UI改进详情
+**装饰图标系统：**
+- IP详情页：6个随机位置的静态图标（✨🎨🎭🎪🎀⭐）
+- 生成结果页：6个带动画的装饰图标（✨💖🌈👑🦋🚀）
+- 外围产品图标：7个周边商品展示图标
+
+**布局优化：**
+- 图片容器从 `object-contain` 改为 `object-cover` 
+- 固定高度 420px，确保一致的视觉效果
+- 装饰图标层叠在图片之上，不影响核心内容
+
+### 智能通知徽章详情
+**核心设计理念：**
+- **Progressive Disclosure（渐进式披露）**：只在必要时显示信息
+- **State Management（状态管理）**：跟踪用户的阅读状态
+- **Context Awareness（上下文感知）**：根据用户当前行为调整
+- **User Intent Recognition（用户意图识别）**：理解用户访问意图
+
+**显示逻辑：**
+1. 有处理中任务 → 始终显示（蓝色，旋转图标）
+2. 有失败任务 → 始终显示（红色，警告图标）
+3. 有未读完成任务 → 显示（绿色，完成图标）
+4. 所有任务已读且无新活动 → 隐藏
+
+**状态持久化：**
+- 基于localStorage存储用户级别的通知状态
+- 跟踪最后阅读时间戳和已读完成任务数量
+- 检测任务数量变化，自动重置状态
+
+**用户行为响应：**
+- 访问/tasks页面 → 自动标记当前完成任务为已读
+- 点击徽章 → 立即标记为已读并跳转
+- 路由变化监听 → 实时检测用户访问意图
+
+## 🎯 下一步计划
+- [ ] 检查项目功能是否正常
+- [ ] 确认Supabase连接状态
+- [ ] 测试主要功能模块
+- [ ] 优化服务器端渲染性能（如果需要）
+
+## 📝 最近修改
+- [x] 修改应用场景默认标签：从"个人用户"改为"创意设计师"
+  - 文件：`src/components/UseCases.tsx`
+  - 修改时间: 2024年12月19日 14:52
+- [x] **重大修复：gpt-4o-image API调用格式**
+  - 问题：API调用异常，返回空对象 `{}`
+  - 原因：图片传递格式不符合APICore标准
+  - 修复：将字符串拼接格式改为标准OpenAI Chat格式
+  - 文件：`src/lib/ai-api.ts` (tryAPICall & triggerSparrowGeneration函数)
+  - 参考文档：[APICore gpt-4o-image文档](https://doc.apicore.ai/api-301177866)
+  - 修复时间: 2024年12月19日 15:05
+- [x] **环境变量修复：添加缺失的AI_API_KEY**
+  - 问题："所有API配置都失败"的根本原因
+  - 修复：添加 `AI_API_KEY=sk-DudMcfHfR2LzzePep763GUhx9I5594RAciiegxG4EgrpGmos`
+  - 文件：`.env.local`
+  - 修复时间: 2024年12月19日 15:15
+- [x] **Next.js 15 兼容性修复：cookies() API**
+  - 问题：`cookies()` should be awaited before using its value
+  - 修复：将同步cookies调用改为async/await模式  
+  - 文件：`src/app/api/subscription/route.ts`
+  - 修复时间: 2024年12月19日 15:16
+- [x] **UI优化：IP形象展示页面效果改进**
+  - 优化1：IP效果图撑满容器，去除左右留白
+  - 优化2：添加随机装饰图标，始终跟随IP效果图
+  - 优化3：增加动画效果，提升视觉体验
+  - 文件：`src/components/IPDetail.tsx` & `src/components/HeroSection.tsx`
+  - 修改时间: 2024年12月19日 16:20
+- [x] **智能任务通知徽章优化 - Smart Notification Badge**
+  - 功能1：进入任务列表页面后自动清空完成任务提醒
+  - 功能2：没有未读和没有进行中任务时智能隐藏徽章
+  - 功能3：引入已读状态管理，基于localStorage持久化
+  - 最佳实践：Progressive Disclosure, Context Awareness, User Intent Recognition
+  - 文件：`src/components/GlobalTaskButton.tsx`
+  - 修改时间: 2024年12月19日 16:50
+- [x] **🎨 装饰图标精简优化**
+  - 需求：只保留4个核心产品图标（钥匙扣/手机壳/衣服/30+）
+  - 优化1：移除多余装饰图标，从6+个减少到4个核心产品
+  - 优化2：手机壳图标移至IP图片边缘，而非按键框下方
+  - 优化3：保持产品图标的hover缩放效果和边框样式
+  - 文件：`src/components/IPDetail.tsx` & `src/components/HeroSection.tsx`
+  - 修改时间: 2024年12月19日 17:20
+- [x] **✨ 保存按钮动效优化**
+  - 功能：为"保存IP形象"按钮添加微微跳动动效
+  - 效果：鼓励用户点击，提升转化率
+  - 实现：自定义gentle-bounce动画，2秒循环，优雅不突兀
+  - 细节：保存中时禁用动画，hover时切换为bounce效果
+  - 文件：`src/components/HeroSection.tsx` & `src/app/globals.css`
+  - 修改时间: 2024年12月19日 17:20
+- [x] **🎨 图标悬浮位置优化**
+  - 问题：图标嵌入在图片内部，视觉效果不佳
+  - 解决：图标改为悬浮在图片边缘外，真正的"悬浮"效果
+  - 调整1：手机壳图标从左上角下移120px，避免与30+重叠
+  - 调整2：衣服图标从右下角上移120px，平衡布局
+  - 调整3：增强阴影效果(shadow-xl)，突出悬浮感
+  - 调整4：钥匙扣和30+保持角落位置，形成视觉锚点
+  - 文件：`src/components/IPDetail.tsx` & `src/components/HeroSection.tsx`
+  - 修改时间: 2024年12月19日 17:40
+
+### UI改进详情
+**装饰图标系统：**
+- IP详情页：6个随机位置的静态图标（✨🎨🎭🎪🎀⭐）
+- 生成结果页：6个带动画的装饰图标（✨💖🌈👑🦋🚀）
+- 外围产品图标：7个周边商品展示图标
+
+**布局优化：**
+- 图片容器从 `object-contain` 改为 `object-cover` 
+- 固定高度 420px，确保一致的视觉效果
+- 装饰图标层叠在图片之上，不影响核心内容
+
+### 智能通知徽章详情
+**核心设计理念：**
+- **Progressive Disclosure（渐进式披露）**：只在必要时显示信息
+- **State Management（状态管理）**：跟踪用户的阅读状态
+- **Context Awareness（上下文感知）**：根据用户当前行为调整
+- **User Intent Recognition（用户意图识别）**：理解用户访问意图
+
+**显示逻辑：**
+1. 有处理中任务 → 始终显示（蓝色，旋转图标）
+2. 有失败任务 → 始终显示（红色，警告图标）
+3. 有未读完成任务 → 显示（绿色，完成图标）
+4. 所有任务已读且无新活动 → 隐藏
+
+**状态持久化：**
+- 基于localStorage存储用户级别的通知状态
+- 跟踪最后阅读时间戳和已读完成任务数量
+- 检测任务数量变化，自动重置状态
+
+**用户行为响应：**
+- 访问/tasks页面 → 自动标记当前完成任务为已读
+- 点击徽章 → 立即标记为已读并跳转
+- 路由变化监听 → 实时检测用户访问意图
+
+## 🎯 下一步计划
+- [ ] 检查项目功能是否正常
+- [ ] 确认Supabase连接状态
+- [ ] 测试主要功能模块
+- [ ] 优化服务器端渲染性能（如果需要）
+
+## 📝 最近修改
+- [x] 修改应用场景默认标签：从"个人用户"改为"创意设计师"
+  - 文件：`src/components/UseCases.tsx`
+  - 修改时间: 2024年12月19日 14:52
+- [x] **重大修复：gpt-4o-image API调用格式**
+  - 问题：API调用异常，返回空对象 `{}`
+  - 原因：图片传递格式不符合APICore标准
+  - 修复：将字符串拼接格式改为标准OpenAI Chat格式
+  - 文件：`src/lib/ai-api.ts` (tryAPICall & triggerSparrowGeneration函数)
+  - 参考文档：[APICore gpt-4o-image文档](https://doc.apicore.ai/api-301177866)
+  - 修复时间: 2024年12月19日 15:05
+- [x] **环境变量修复：添加缺失的AI_API_KEY**
+  - 问题："所有API配置都失败"的根本原因
+  - 修复：添加 `AI_API_KEY=sk-DudMcfHfR2LzzePep763GUhx9I5594RAciiegxG4EgrpGmos`
+  - 文件：`.env.local`
+  - 修复时间: 2024年12月19日 15:15
+- [x] **Next.js 15 兼容性修复：cookies() API**
+  - 问题：`cookies()` should be awaited before using its value
+  - 修复：将同步cookies调用改为async/await模式  
+  - 文件：`src/app/api/subscription/route.ts`
+  - 修复时间: 2024年12月19日 15:16
+- [x] **UI优化：IP形象展示页面效果改进**
+  - 优化1：IP效果图撑满容器，去除左右留白
+  - 优化2：添加随机装饰图标，始终跟随IP效果图
+  - 优化3：增加动画效果，提升视觉体验
+  - 文件：`src/components/IPDetail.tsx` & `src/components/HeroSection.tsx`
+  - 修改时间: 2024年12月19日 16:20
+- [x] **智能任务通知徽章优化 - Smart Notification Badge**
+  - 功能1：进入任务列表页面后自动清空完成任务提醒
+  - 功能2：没有未读和没有进行中任务时智能隐藏徽章
+  - 功能3：引入已读状态管理，基于localStorage持久化
+  - 最佳实践：Progressive Disclosure, Context Awareness, User Intent Recognition
+  - 文件：`src/components/GlobalTaskButton.tsx`
+  - 修改时间: 2024年12月19日 16:50
+- [x] **🎨 装饰图标精简优化**
+  - 需求：只保留4个核心产品图标（钥匙扣/手机壳/衣服/30+）
+  - 优化1：移除多余装饰图标，从6+个减少到4个核心产品
+  - 优化2：手机壳图标移至IP图片边缘，而非按键框下方
+  - 优化3：保持产品图标的hover缩放效果和边框样式
+  - 文件：`src/components/IPDetail.tsx` & `src/components/HeroSection.tsx`
+  - 修改时间: 2024年12月19日 17:20
+- [x] **✨ 保存按钮动效优化**
+  - 功能：为"保存IP形象"按钮添加微微跳动动效
+  - 效果：鼓励用户点击，提升转化率
+  - 实现：自定义gentle-bounce动画，2秒循环，优雅不突兀
+  - 细节：保存中时禁用动画，hover时切换为bounce效果
+  - 文件：`src/components/HeroSection.tsx` & `src/app/globals.css`
+  - 修改时间: 2024年12月19日 17:20
+- [x] **🎨 图标悬浮位置优化**
+  - 问题：图标嵌入在图片内部，视觉效果不佳
+  - 解决：图标改为悬浮在图片边缘外，真正的"悬浮"效果
+  - 调整1：手机壳图标从左上角下移120px，避免与30+重叠
+  - 调整2：衣服图标从右下角上移120px，平衡布局
+  - 调整3：增强阴影效果(shadow-xl)，突出悬浮感
+  - 调整4：钥匙扣和30+保持角落位置，形成视觉锚点
+  - 文件：`src/components/IPDetail.tsx` & `src/components/HeroSection.tsx`
+  - 修改时间: 2024年12月19日 17:40
+
+### UI改进详情
+**装饰图标系统：**
+- IP详情页：6个随机位置的静态图标（✨🎨🎭🎪🎀⭐）
+- 生成结果页：6个带动画的装饰图标（✨💖🌈👑🦋🚀）
+- 外围产品图标：7个周边商品展示图标
+
+**布局优化：**
+- 图片容器从 `object-contain` 改为 `object-cover` 
+- 固定高度 420px，确保一致的视觉效果
+- 装饰图标层叠在图片之上，不影响核心内容
+
+### 智能通知徽章详情
+**核心设计理念：**
+- **Progressive Disclosure（渐进式披露）**：只在必要时显示信息
+- **State Management（状态管理）**：跟踪用户的阅读状态
+- **Context Awareness（上下文感知）**：根据用户当前行为调整
+- **User Intent Recognition（用户意图识别）**：理解用户访问意图
+
+**显示逻辑：**
+1. 有处理中任务 → 始终显示（蓝色，旋转图标）
+2. 有失败任务 → 始终显示（红色，警告图标）
+3. 有未读完成任务 → 显示（绿色，完成图标）
+4. 所有任务已读且无新活动 → 隐藏
+
+**状态持久化：**
+- 基于localStorage存储用户级别的通知状态
+- 跟踪最后阅读时间戳和已读完成任务数量
+- 检测任务数量变化，自动重置状态
+
+**用户行为响应：**
+- 访问/tasks页面 → 自动标记当前完成任务为已读
+- 点击徽章 → 立即标记为已读并跳转
+- 路由变化监听 → 实时检测用户访问意图
+
+## 🎯 下一步计划
+- [ ] 检查项目功能是否正常
+- [ ] 确认Supabase连接状态
+- [ ] 测试主要功能模块
+- [ ] 优化服务器端渲染性能（如果需要）
+
+## 📝 最近修改
+- [x] 修改应用场景默认标签：从"个人用户"改为"创意设计师"
+  - 文件：`src/components/UseCases.tsx`
+  - 修改时间: 2024年12月19日 14:52
+- [x] **重大修复：gpt-4o-image API调用格式**
+  - 问题：API调用异常，返回空对象 `{}`
+  - 原因：图片传递格式不符合APICore标准
+  - 修复：将字符串拼接格式改为标准OpenAI Chat格式
+  - 文件：`src/lib/ai-api.ts` (tryAPICall & triggerSparrowGeneration函数)
+  - 参考文档：[APICore gpt-4o-image文档](https://doc.apicore.ai/api-301177866)
+  - 修复时间: 2024年12月19日 15:05
+- [x] **环境变量修复：添加缺失的AI_API_KEY**
+  - 问题："所有API配置都失败"的根本原因
+  - 修复：添加 `AI_API_KEY=sk-DudMcfHfR2LzzePep763GUhx9I5594RAciiegxG4EgrpGmos`
+  - 文件：`.env.local`
+  - 修复时间: 2024年12月19日 15:15
+- [x] **Next.js 15 兼容性修复：cookies() API**
+  - 问题：`cookies()` should be awaited before using its value
+  - 修复：将同步cookies调用改为async/await模式  
+  - 文件：`src/app/api/subscription/route.ts`
+  - 修复时间: 2024年12月19日 15:16
+- [x] **UI优化：IP形象展示页面效果改进**
+  - 优化1：IP效果图撑满容器，去除左右留白
+  - 优化2：添加随机装饰图标，始终跟随IP效果图
+  - 优化3：增加动画效果，提升视觉体验
+  - 文件：`src/components/IPDetail.tsx` & `src/components/HeroSection.tsx`
+  - 修改时间: 2024年12月19日 16:20
+- [x] **智能任务通知徽章优化 - Smart Notification Badge**
+  - 功能1：进入任务列表页面后自动清空完成任务提醒
+  - 功能2：没有未读和没有进行中任务时智能隐藏徽章
+  - 功能3：引入已读状态管理，基于localStorage持久化
+  - 最佳实践：Progressive Disclosure, Context Awareness, User Intent Recognition
+  - 文件：`src/components/GlobalTaskButton.tsx`
+  - 修改时间: 2024年12月19日 16:50
+- [x] **🎨 装饰图标精简优化**
+  - 需求：只保留4个核心产品图标（钥匙扣/手机壳/衣服/30+）
+  - 优化1：移除多余装饰图标，从6+个减少到4个核心产品
+  - 优化2：手机壳图标移至IP图片边缘，而非按键框下方
+  - 优化3：保持产品图标的hover缩放效果和边框样式
+  - 文件：`src/components/IPDetail.tsx` & `src/components/HeroSection.tsx`
+  - 修改时间: 2024年12月19日 17:20
+- [x] **✨ 保存按钮动效优化**
+  - 功能：为"保存IP形象"按钮添加微微跳动动效
+  - 效果：鼓励用户点击，提升转化率
+  - 实现：自定义gentle-bounce动画，2秒循环，优雅不突兀
+  - 细节：保存中时禁用动画，hover时切换为bounce效果
+  - 文件：`src/components/HeroSection.tsx` & `src/app/globals.css`
+  - 修改时间: 2024年12月19日 17:20
+- [x] **🎨 图标悬浮位置优化**
+  - 问题：图标嵌入在图片内部，视觉效果不佳
+  - 解决：图标改为悬浮在图片边缘外，真正的"悬浮"效果
+  - 调整1：手机壳图标从左上角下移120px，避免与30+重叠
+  - 调整2：衣服图标从右下角上移120px，平衡布局
+  - 调整3：增强阴影效果(shadow-xl)，突出悬浮感
+  - 调整4：钥匙扣和30+保持角落位置，形成视觉锚点
+  - 文件：`src/components/IPDetail.tsx` & `src/components/HeroSection.tsx`
+  - 修改时间: 2024年12月19日 17:40
+
+### UI改进详情
+**装饰图标系统：**
+- IP详情页：6个随机位置的静态图标（✨🎨🎭🎪🎀⭐）
+- 生成结果页：6个带动画的装饰图标（✨💖🌈👑🦋🚀）
+- 外围产品图标：7个周边商品展示图标
+
+**布局优化：**
+- 图片容器从 `object-contain` 改为 `object-

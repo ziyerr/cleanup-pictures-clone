@@ -5,7 +5,14 @@
       "Bash(lsof:*)",
       "Bash(pkill:*)",
       "Bash(npm run build:*)",
-      "WebFetch(domain:doc.apicore.ai)"
+      "WebFetch(domain:doc.apicore.ai)",
+      "Bash(find:*)",
+      "Bash(node:*)",
+      "Bash(true)",
+      "Bash(ls:*)",
+      "Bash(curl:*)",
+      "Bash(rm:*)",
+      "Bash(git add:*)"
     ],
     "deny": []
   }

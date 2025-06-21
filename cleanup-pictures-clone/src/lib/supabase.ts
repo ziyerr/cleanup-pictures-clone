@@ -5,7 +5,27 @@ import { UserSubscription, UsageQuota, SubscriptionPlan } from './creem-config';
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://wrfvysakckcmvquvwuei.supabase.co';
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndyZnZ5c2FrY2tjbXZxdXZ3dWVpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDk0MDEzMDEsImV4cCI6MjA2NDk3NzMwMX0.LgQHwS9rbcmTfL2SegtcDByDTxWqraKMcXRQBPMtYJw';
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+  auth: {
+    persistSession: true, // 启用会话持久化
+    storageKey: 'cleanup-pictures-auth', // 自定义存储键
+    storage: typeof window !== 'undefined' ? window.localStorage : undefined, // 使用localStorage
+    flowType: 'pkce' // 使用PKCE流程，更安全
+  },
+  global: {
+    fetch: (url, options = {}) => {
+      console.log('Supabase fetch:', url);
+      return fetch(url, {
+        ...options,
+        // 添加超时和重试机制
+        signal: AbortSignal.timeout(10000), // 10秒超时
+      }).catch(error => {
+        console.error('Supabase fetch error:', error);
+        throw error;
+      });
+    }
+  }
+});
 
 // Database types
 export interface GenerationTask {
@@ -203,9 +223,9 @@ export const saveUserIPCharacter = async (
   }
 };
 
-export const getUserIPCharacters = async (userId: string): Promise<UserIPCharacter[]> => {
+export const getUserIPCharacters = async (userId: string, retryCount = 0): Promise<UserIPCharacter[]> => {
   try {
-    console.log(`正在为用户 ${userId} 获取IP形象列表`);
+    console.log(`正在为用户 ${userId} 获取IP形象列表 (尝试 ${retryCount + 1})`);
     
     // 检查当前认证状态
     const { data: { user }, error: authError } = await supabase.auth.getUser();
@@ -213,6 +233,14 @@ export const getUserIPCharacters = async (userId: string): Promise<UserIPCharact
     
     if (authError) {
       console.error('认证检查失败:', authError);
+      
+      // 网络错误重试
+      if (authError.message?.includes('Failed to fetch') && retryCount < 3) {
+        console.log(`网络错误，${1000 * (retryCount + 1)}ms后重试...`);
+        await new Promise(resolve => setTimeout(resolve, 1000 * (retryCount + 1)));
+        return getUserIPCharacters(userId, retryCount + 1);
+      }
+      
       throw new Error(`认证失败: ${authError.message}`);
     }
     
@@ -233,6 +261,13 @@ export const getUserIPCharacters = async (userId: string): Promise<UserIPCharact
       .order('created_at', { ascending: false });
 
     if (error) {
+      // 网络错误重试
+      if (error.message?.includes('Failed to fetch') && retryCount < 3) {
+        console.log(`数据库查询网络错误，${1000 * (retryCount + 1)}ms后重试...`);
+        await new Promise(resolve => setTimeout(resolve, 1000 * (retryCount + 1)));
+        return getUserIPCharacters(userId, retryCount + 1);
+      }
+      
       throw new Error(`获取IP列表失败: ${error.message}`);
     }
 
@@ -248,9 +283,9 @@ export const getUserIPCharacters = async (userId: string): Promise<UserIPCharact
   }
 };
 
-export const getIPCharacterWithStatus = async (ipId: string) => {
+export const getIPCharacterWithStatus = async (ipId: string, retryCount = 0) => {
   try {
-    console.log('获取IP形象状态:', ipId);
+    console.log(`获取IP形象状态: ${ipId} (尝试 ${retryCount + 1})`);
     
     // 检查当前认证状态
     const { data: { user }, error: authError } = await supabase.auth.getUser();
@@ -258,6 +293,14 @@ export const getIPCharacterWithStatus = async (ipId: string) => {
     
     if (authError) {
       console.error('认证检查失败:', authError);
+      
+      // 网络错误重试
+      if (authError.message?.includes('Failed to fetch') && retryCount < 3) {
+        console.log(`认证网络错误，${1000 * (retryCount + 1)}ms后重试...`);
+        await new Promise(resolve => setTimeout(resolve, 1000 * (retryCount + 1)));
+        return getIPCharacterWithStatus(ipId, retryCount + 1);
+      }
+      
       throw new Error(`认证失败: ${authError.message}`);
     }
     
@@ -277,6 +320,14 @@ export const getIPCharacterWithStatus = async (ipId: string) => {
         console.log('IP形象不存在:', ipId);
         return null; // No rows found
       }
+      
+      // 网络错误重试
+      if (error.message?.includes('Failed to fetch') && retryCount < 3) {
+        console.log(`获取IP形象网络错误，${1000 * (retryCount + 1)}ms后重试...`);
+        await new Promise(resolve => setTimeout(resolve, 1000 * (retryCount + 1)));
+        return getIPCharacterWithStatus(ipId, retryCount + 1);
+      }
+      
       console.error('获取IP形象失败:', error);
       throw new Error(`获取IP形象失败: ${error.message}`);
     }
@@ -425,9 +476,9 @@ export const uploadImageToSupabase = async (
 };
 
 // Get tasks for a specific character
-export const getCharacterTasks = async (characterId: string): Promise<GenerationTask[]> => {
+export const getCharacterTasks = async (characterId: string, retryCount = 0): Promise<GenerationTask[]> => {
   try {
-    console.log(`正在获取角色 ${characterId} 的相关任务`);
+    console.log(`正在获取角色 ${characterId} 的相关任务 (尝试 ${retryCount + 1})`);
     
     const { data, error } = await supabase
       .from('generation_tasks')
@@ -436,6 +487,13 @@ export const getCharacterTasks = async (characterId: string): Promise<Generation
       .order('created_at', { ascending: false });
 
     if (error) {
+      // 网络错误重试
+      if (error.message?.includes('Failed to fetch') && retryCount < 3) {
+        console.log(`获取任务网络错误，${1000 * (retryCount + 1)}ms后重试...`);
+        await new Promise(resolve => setTimeout(resolve, 1000 * (retryCount + 1)));
+        return getCharacterTasks(characterId, retryCount + 1);
+      }
+      
       throw new Error(`获取角色任务失败: ${error.message}`);
     }
 

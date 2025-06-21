@@ -141,29 +141,22 @@ export default function CustomMerchandiseModal({
     try {
       let finalReferenceImageUrl = characterImageUrl; // 默认使用角色图片
       
-      // 如果用户上传了参考图，先上传到服务器
-      if (referenceImage) {
-        const formData = new FormData();
-        formData.append('image', referenceImage);
-        
-        const uploadResponse = await fetch('/api/upload-reference-image', {
-          method: 'POST',
-          body: formData,
-        });
-        
-        if (uploadResponse.ok) {
-          const uploadResult = await uploadResponse.json();
-          finalReferenceImageUrl = uploadResult.url;
-        } else {
-          console.warn('参考图上传失败，将使用角色原图');
-        }
+      // 如果用户上传了参考图，使用base64编码（暂时跳过文件上传服务器）
+      if (referenceImage && referenceImageUrl) {
+        // 直接使用预览URL（base64格式）
+        finalReferenceImageUrl = referenceImageUrl;
+        console.log('使用用户上传的参考图片');
       }
       
-      await onStartGeneration({
+      const merchandiseData = {
         name: merchandiseName.trim(),
         description: description.trim(),
         referenceImageUrl: finalReferenceImageUrl,
-      });
+      };
+      
+      console.log('CustomMerchandiseModal: 调用onStartGeneration', merchandiseData);
+      
+      await onStartGeneration(merchandiseData);
       
       // 重置表单
       setMerchandiseName('');
@@ -184,18 +177,30 @@ export default function CustomMerchandiseModal({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 overflow-y-auto">
+      <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[85vh] overflow-y-auto relative">
+        {/* 生成中的遮罩层 */}
+        {isGenerating && (
+          <div className="absolute inset-0 bg-white/80 backdrop-blur-sm rounded-2xl flex items-center justify-center z-10">
+            <div className="text-center">
+              <div className="w-16 h-16 border-4 border-cleanup-green border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">正在提交生成任务</h3>
+              <p className="text-gray-600">请稍候，系统正在处理您的请求...</p>
+            </div>
+          </div>
+        )}
+
         {/* Header */}
-        <div className="p-6 border-b border-gray-200">
+        <div className="p-4 sm:p-6 border-b border-gray-200">
           <div className="flex items-center justify-between">
             <div>
-              <h2 className="text-2xl font-bold text-gray-900">创建自定义周边</h2>
-              <p className="text-gray-600 mt-1">为"{characterName}"设计独特的周边商品</p>
+              <h2 className="text-xl sm:text-2xl font-bold text-gray-900">创建自定义周边</h2>
+              <p className="text-gray-600 mt-1 text-sm sm:text-base">为"{characterName}"设计独特的周边商品</p>
             </div>
             <button
               onClick={onClose}
-              className="w-8 h-8 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center text-gray-600"
+              disabled={isGenerating}
+              className="w-8 h-8 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center text-gray-600 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <X className="w-5 h-5" />
             </button>
@@ -203,14 +208,14 @@ export default function CustomMerchandiseModal({
         </div>
 
         {/* Content */}
-        <div className="p-6 space-y-6">
+        <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
           {/* Character Preview */}
           <div className="text-center">
-            <h3 className="text-lg font-semibold mb-3">基础IP形象</h3>
+            <h3 className="text-base sm:text-lg font-semibold mb-3">基础IP形象</h3>
             <img
               src={characterImageUrl}
               alt={characterName}
-              className="w-24 h-24 mx-auto rounded-lg object-cover border-2 border-gray-200"
+              className="w-20 h-20 sm:w-24 sm:h-24 mx-auto rounded-lg object-cover border-2 border-gray-200"
             />
             <p className="text-sm text-gray-600 mt-2">{characterName}</p>
           </div>
@@ -235,7 +240,8 @@ export default function CustomMerchandiseModal({
               value={merchandiseName}
               onChange={(e) => setMerchandiseName(e.target.value)}
               placeholder="例如：可爱钥匙扣、时尚手机壳、创意马克杯..."
-              className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-cleanup-green focus:border-cleanup-green ${
+              disabled={isGenerating}
+              className={`w-full px-3 py-2 sm:px-4 sm:py-3 border rounded-lg focus:ring-2 focus:ring-cleanup-green focus:border-cleanup-green disabled:bg-gray-50 disabled:cursor-not-allowed ${
                 errors.name ? 'border-red-300' : 'border-gray-300'
               }`}
             />
@@ -287,7 +293,8 @@ export default function CustomMerchandiseModal({
               onChange={(e) => setDescription(e.target.value)}
               placeholder="详细描述您想要的周边样式，例如：设计一个可爱的钥匙扣，采用Q版风格，背景是粉色渐变，IP形象居中显示，周围有小星星装饰..."
               rows={4}
-              className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-cleanup-green focus:border-cleanup-green resize-none ${
+              disabled={isGenerating}
+              className={`w-full px-3 py-2 sm:px-4 sm:py-3 border rounded-lg focus:ring-2 focus:ring-cleanup-green focus:border-cleanup-green resize-none disabled:bg-gray-50 disabled:cursor-not-allowed ${
                 errors.description ? 'border-red-300' : 'border-gray-300'
               }`}
             />
@@ -323,12 +330,13 @@ export default function CustomMerchandiseModal({
                   type="file"
                   accept="image/*"
                   onChange={handleImageUpload}
+                  disabled={isGenerating}
                   className="hidden"
                   id="reference-image-upload"
                 />
                 <label
                   htmlFor="reference-image-upload"
-                  className="cursor-pointer flex flex-col items-center"
+                  className={`flex flex-col items-center ${isGenerating ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'}`}
                 >
                   <Upload className="w-8 h-8 text-gray-400 mb-2" />
                   <p className="text-sm text-gray-600 mb-1">点击上传参考图片</p>
@@ -359,7 +367,8 @@ export default function CustomMerchandiseModal({
           <div className="flex items-center justify-between pt-4 border-t border-gray-200">
             <button
               onClick={onClose}
-              className="px-6 py-2 text-gray-600 hover:text-gray-800 font-medium"
+              disabled={isGenerating}
+              className="px-4 py-2 text-gray-600 hover:text-gray-800 font-medium disabled:opacity-50 disabled:cursor-not-allowed"
             >
               取消
             </button>
@@ -377,7 +386,7 @@ export default function CustomMerchandiseModal({
               {isGenerating ? (
                 <>
                   <div className="w-4 h-4 border-2 border-gray-400 border-t-transparent rounded-full animate-spin" />
-                  生成中...
+                  提交中...
                 </>
               ) : (
                 <>

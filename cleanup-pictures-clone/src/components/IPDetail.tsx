@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { Share2, Download, Edit, Trash2, Eye, ExternalLink, Play, Pencil, Check, Loader2 as Loader, AlertCircle } from 'lucide-react';
+import { Share2, Download, Edit, Trash2, Eye, ExternalLink, Play, Pencil, Check, Loader2 as Loader, AlertCircle, Wand2 } from 'lucide-react';
 import type { UserIPCharacter } from '../lib/supabase';
 import MerchandiseGenerationModal from './MerchandiseGenerationModal';
 import TaskListModal from './TaskListModal';
@@ -33,11 +33,15 @@ export default function IPDetail({ ipCharacter, onBack, onUpdate }: IPDetailProp
   const [newName, setNewName] = useState(ipCharacter.name);
   const [isSaving, setIsSaving] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [pendingTasks, setPendingTasks] = useState<any[]>([]);
+  const [networkError, setNetworkError] = useState<string | null>(null);
 
   const fetchStatus = useCallback(async () => {
     try {
+      setNetworkError(null); // 清除之前的网络错误
+      
       // 直接使用客户端Supabase调用，而不是API端点
-      const { getIPCharacterWithStatus } = await import('../lib/supabase');
+      const { getIPCharacterWithStatus, getCharacterTasks } = await import('../lib/supabase');
       const data = await getIPCharacterWithStatus(ipCharacter.id);
       
       if (!data) {
@@ -47,13 +51,67 @@ export default function IPDetail({ ipCharacter, onBack, onUpdate }: IPDetailProp
       console.log('IPDetail - 获取到的IP状态数据:', data);
       setCharacterStatus(data);
       
+      // 获取正在进行的任务
+      try {
+        const tasks = await getCharacterTasks(ipCharacter.id);
+        console.log('IPDetail - 获取到的所有任务:', tasks.map(t => ({ id: t.id, type: t.task_type, status: t.status })));
+        
+        const activeTasks = tasks.filter(task => 
+          task.status === 'pending' || task.status === 'processing'
+        );
+        
+        // 合并真实任务和临时任务，避免重复
+        setPendingTasks(prev => {
+          const realTaskIds = new Set(activeTasks.map(t => t.id));
+          const tempTasks = prev.filter(t => t.id.startsWith('temp_') && !realTaskIds.has(t.id.replace('temp_', '')));
+          const mergedTasks = [...activeTasks, ...tempTasks];
+          console.log('IPDetail - 合并后的进行中任务:', mergedTasks.map(t => ({ id: t.id, type: t.task_type, status: t.status, isTemp: t.id.startsWith('temp_') })));
+          return mergedTasks;
+        });
+      } catch (taskError) {
+        console.warn('获取任务列表失败:', taskError);
+        
+        // 如果是网络错误，设置错误状态但不抛出异常
+        if (taskError instanceof Error && taskError.message.includes('Failed to fetch')) {
+          setNetworkError('网络连接不稳定，部分数据可能无法显示');
+        }
+        setPendingTasks([]);
+      }
+      
       // 如果有新的周边商品数据，同步更新到父组件
       if (data.merchandise_urls && Object.keys(data.merchandise_urls).length > 0) {
         console.log('IPDetail - 发现周边商品数据，更新父组件:', data.merchandise_urls);
         onUpdate(data);
       }
+      
+      // 清理已完成的临时任务
+      setPendingTasks(prev => {
+        const currentMerchandiseTypes = data.merchandise_urls ? Object.keys(data.merchandise_urls) : [];
+        const filteredTasks = prev.filter(task => {
+          if (task.id.startsWith('temp_')) {
+            // 检查临时任务对应的商品是否已完成
+            const isCompleted = currentMerchandiseTypes.some(type => 
+              task.prompt?.includes(type) || task.prompt?.toLowerCase().includes(type.toLowerCase())
+            );
+            if (isCompleted) {
+              console.log('IPDetail - 清理已完成的临时任务:', task.id);
+              return false;
+            }
+          }
+          return true;
+        });
+        return filteredTasks;
+      });
     } catch (error) {
       console.error('获取IP状态失败:', error);
+      
+      // 如果是网络错误，设置友好的错误消息
+      if (error instanceof Error && error.message.includes('Failed to fetch')) {
+        setNetworkError('网络连接不稳定，请检查网络后刷新页面');
+      } else {
+        setNetworkError('数据加载失败，请稍后重试');
+      }
+      
       setCharacterStatus(null); // Set to null on error to show error state
     }
   }, [ipCharacter.id, onUpdate]);
@@ -66,11 +124,17 @@ export default function IPDetail({ ipCharacter, onBack, onUpdate }: IPDetailProp
 
   // Effect for polling
   useEffect(() => {
-    const shouldPoll = characterStatus?.initial_task_status !== 'completed' || characterStatus?.merchandise_task_status === 'processing';
+    const hasActiveTasks = pendingTasks.length > 0;
+    const shouldPoll = characterStatus?.initial_task_status !== 'completed' || 
+                       characterStatus?.merchandise_task_status === 'processing' ||
+                       hasActiveTasks;
+    
     console.log('IPDetail - 轮询检查:', {
       shouldPoll,
       initial_task_status: characterStatus?.initial_task_status,
       merchandise_task_status: characterStatus?.merchandise_task_status,
+      hasActiveTasks,
+      pendingTasksCount: pendingTasks.length,
       isLoading
     });
     
@@ -79,15 +143,15 @@ export default function IPDetail({ ipCharacter, onBack, onUpdate }: IPDetailProp
     }
 
     const intervalId = setInterval(() => {
-      console.log('IPDetail - 执行定时轮询');
+      console.log('IPDetail - 执行定时轮询 (包含任务检查)');
       fetchStatus();
-    }, 5000); // Poll every 5 seconds
+    }, 3000); // Poll every 3 seconds when there are active tasks
 
     return () => {
       console.log('IPDetail - 清除轮询定时器');
       clearInterval(intervalId);
     };
-  }, [characterStatus, fetchStatus, isLoading]);
+  }, [characterStatus, fetchStatus, isLoading, pendingTasks.length]);
 
   const handleShare = () => {
     const shareUrl = `${window.location.origin}/workshop/shared/${ipCharacter.id}`;
@@ -190,6 +254,8 @@ export default function IPDetail({ ipCharacter, onBack, onUpdate }: IPDetailProp
     referenceImageUrl?: string;
   }) => {
     try {
+      console.log('开始自定义周边生成:', merchandiseData);
+      
       // Get the current session token for authentication
       const { data: { session } } = await (await import('../lib/supabase')).supabase.auth.getSession();
       const authToken = session?.access_token;
@@ -198,32 +264,86 @@ export default function IPDetail({ ipCharacter, onBack, onUpdate }: IPDetailProp
         throw new Error('认证token不存在，请重新登录');
       }
 
+      if (!currentUser?.id) {
+        throw new Error('用户信息不存在，请重新登录');
+      }
+
+      console.log('发送API请求:', {
+        url: `/api/ip/${ipCharacter.id}/generate-custom`,
+        userId: currentUser.id,
+        hasAuth: !!authToken,
+        data: merchandiseData
+      });
+
       const response = await fetch(`/api/ip/${ipCharacter.id}/generate-custom`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'x-user-id': currentUser?.id || '',
+          'x-user-id': currentUser.id,
           'Authorization': `Bearer ${authToken}`,
         },
         body: JSON.stringify(merchandiseData),
       });
 
+      console.log('API响应状态:', response.status, response.statusText);
+
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ error: '自定义生成启动失败' }));
-        throw new Error(errorData.error);
+        const errorText = await response.text();
+        console.error('API错误响应:', errorText);
+        
+        let errorMessage = '自定义生成启动失败';
+        try {
+          const errorData = JSON.parse(errorText);
+          errorMessage = errorData.error || errorMessage;
+        } catch {
+          errorMessage = errorText || errorMessage;
+        }
+        
+        throw new Error(errorMessage);
       }
 
       const result = await response.json();
       console.log('自定义周边生成任务已启动:', result);
 
-      // 立即刷新状态以显示新任务
-      await fetchStatus();
+      // 创建临时任务状态，避免API延迟导致的显示问题
+      const tempTask = {
+        id: result.taskId || 'temp_' + Date.now(),
+        task_type: 'merchandise_custom',
+        status: 'pending' as const,
+        prompt: `生成${merchandiseData.name}`,
+        character_id: ipCharacter.id,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      };
+      
+      // 立即添加临时任务到本地状态
+      setPendingTasks(prev => [...prev, tempTask]);
+      console.log('IPDetail - 添加临时任务到本地状态:', tempTask);
 
-      alert(`成功启动"${merchandiseData.name}"的生成任务！`);
+      // 异步刷新状态，带重试机制
+      const retryFetchStatus = async (retryCount = 0) => {
+        try {
+          await fetchStatus();
+          console.log('IPDetail - 状态刷新成功 (重试次数:', retryCount, ')');
+        } catch (error) {
+          console.warn('IPDetail - 状态刷新失败:', error);
+          if (retryCount < 2) {
+            console.log('IPDetail - 1秒后重试状态刷新...');
+            setTimeout(() => retryFetchStatus(retryCount + 1), 1000);
+          }
+        }
+      };
+      
+      retryFetchStatus();
+
+      // 显示更好的成功反馈
+      const successMessage = `✅ 成功启动"${merchandiseData.name}"的生成任务！\n\n任务已提交，预计2-5分钟完成。您可以在下方查看生成进度。`;
+      alert(successMessage);
 
     } catch (error) {
       console.error('启动自定义周边生成失败:', error);
-      alert(`启动失败: ${(error as Error).message}`);
+      const errorMessage = `❌ 启动失败: ${(error as Error).message}\n\n请检查网络连接后重试，或联系客服支持。`;
+      alert(errorMessage);
     }
   };
 
@@ -290,6 +410,26 @@ export default function IPDetail({ ipCharacter, onBack, onUpdate }: IPDetailProp
 
   return (
     <div className="space-y-6">
+      {/* 网络错误提示 */}
+      {networkError && (
+        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 flex items-start gap-3">
+          <AlertCircle className="w-5 h-5 text-yellow-600 flex-shrink-0 mt-0.5" />
+          <div>
+            <h3 className="text-sm font-medium text-yellow-800">连接问题</h3>
+            <p className="text-sm text-yellow-700 mt-1">{networkError}</p>
+            <button
+              onClick={() => {
+                setNetworkError(null);
+                fetchStatus();
+              }}
+              className="text-sm text-yellow-800 underline mt-2 hover:text-yellow-900"
+            >
+              重试连接
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Header Actions */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
@@ -538,7 +678,11 @@ export default function IPDetail({ ipCharacter, onBack, onUpdate }: IPDetailProp
             </div>
           </div>
 
-          {merchandiseItems.length === 0 ? (
+          {merchandiseItems.length === 0 && pendingTasks.filter(task => {
+            return task.task_type === 'merchandise_custom' || 
+                   task.task_type === 'merchandise_generation' ||
+                   task.task_type?.includes('merchandise');
+          }).length === 0 ? (
             <div className="text-center py-16">
               <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
                 <Play className="w-8 h-8 text-gray-400" />
@@ -569,6 +713,7 @@ export default function IPDetail({ ipCharacter, onBack, onUpdate }: IPDetailProp
             </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+              {/* 已完成的周边商品 */}
               {merchandiseItems.map(([type, url]) => (
                 <div key={type} className="group bg-white rounded-xl overflow-hidden border border-gray-200 hover:border-cleanup-green transition-colors">
                   <div className="aspect-square relative">
@@ -594,8 +739,59 @@ export default function IPDetail({ ipCharacter, onBack, onUpdate }: IPDetailProp
                       {type === 'fridge_magnet' && '冰箱贴'}
                       {type === 'handbag' && '手提袋'}
                       {type === 'phone_case' && '手机壳'}
+                      {type.startsWith('custom_') && (
+                        pendingTasks.find(task => task.id === type.replace('custom_', ''))?.prompt?.split('。')[0]?.replace('设计一个名为"', '')?.replace('"的周边商品', '') || '自定义周边'
+                      )}
                     </h4>
                     <p className="text-sm text-gray-600 mt-1">准备就绪</p>
+                  </div>
+                </div>
+              ))}
+              
+              {/* 正在生成中的周边商品 */}
+              {pendingTasks.filter(task => {
+                const isMerchandiseTask = task.task_type === 'merchandise_custom' || 
+                                        task.task_type === 'merchandise_generation' ||
+                                        task.task_type?.includes('merchandise');
+                console.log('IPDetail - 任务过滤检查:', { id: task.id, type: task.task_type, isMerchandiseTask });
+                return isMerchandiseTask;
+              }).map((task) => (
+                <div key={task.id} className="bg-white rounded-xl overflow-hidden border border-blue-200 relative">
+                  <div className="aspect-square relative bg-gradient-to-br from-blue-50 to-purple-50 flex items-center justify-center">
+                    {/* 加载动画 */}
+                    <div className="relative">
+                      <div className="w-16 h-16 border-4 border-blue-200 border-t-blue-500 rounded-full animate-spin"></div>
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <Wand2 className="w-6 h-6 text-blue-500" />
+                      </div>
+                    </div>
+                    
+                    {/* 状态标签 */}
+                    <div className="absolute top-2 right-2 bg-blue-500 text-white px-2 py-1 rounded-full text-xs font-medium">
+                      {task.status === 'pending' ? '排队中' : '生成中'}
+                    </div>
+                  </div>
+                  
+                  <div className="p-4">
+                    <h4 className="font-medium text-gray-900 mb-1">
+                      {(() => {
+                        if (task.task_type === 'merchandise_custom') {
+                          // 从prompt中提取名称，或者从临时任务的prompt中提取
+                          if (task.prompt?.includes('生成')) {
+                            return task.prompt.replace('生成', '') || '自定义周边';
+                          }
+                          return task.prompt?.split('。')[0]?.replace('设计一个名为"', '')?.replace('"的周边商品', '') || '自定义周边';
+                        }
+                        return '周边商品';
+                      })()}
+                    </h4>
+                    <p className="text-sm text-blue-600 flex items-center gap-1">
+                      <Loader className="w-3 h-3 animate-spin" />
+                      {task.status === 'pending' ? '等待生成...' : '正在生成...'}
+                    </p>
+                    <p className="text-xs text-gray-500 mt-1">
+                      预计完成时间：2-5分钟
+                    </p>
                   </div>
                 </div>
               ))}

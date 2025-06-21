@@ -22,10 +22,43 @@ export default function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps
     try {
       console.log('正在启动Google登录...');
       
+      // 检查是否需要强制重授权
+      const forceReauth = typeof window !== 'undefined' ? localStorage.getItem('forceReauth') === 'true' : false;
+      
+      if (!forceReauth) {
+        // 检查是否已有会话（仅在非强制重授权时）
+        const { data: sessionData } = await supabase.auth.getSession();
+        
+        if (sessionData.session) {
+          console.log('检测到现有会话，直接跳转...');
+          window.location.href = '/workshop';
+          return;
+        }
+      } else {
+        console.log('检测到强制重授权标记，将要求用户重新授权');
+      }
+      
+      // 准备授权参数
+      const queryParams: { [key: string]: string } = {
+        access_type: 'online' // 在线访问，减少权限请求
+      };
+      
+      // 如果需要强制重授权，添加consent参数
+      if (forceReauth) {
+        queryParams.prompt = 'consent'; // 强制重新授权
+        // 清除强制重授权标记
+        if (typeof window !== 'undefined') {
+          localStorage.removeItem('forceReauth');
+          console.log('已清除强制重授权标记');
+        }
+      }
+      
+      // 发起OAuth登录
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: `${window.location.origin}/auth/callback`
+          redirectTo: `${window.location.origin}/auth/callback`,
+          queryParams
         }
       });
 
@@ -33,8 +66,7 @@ export default function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps
         throw error;
       }
 
-      // OAuth 登录会重定向，所以这里不需要额外处理
-      console.log('Google登录已启动');
+      console.log(`Google登录已启动${forceReauth ? '（强制重授权模式）' : ''}`);
       
     } catch (err: any) {
       console.error('Google登录错误:', err);

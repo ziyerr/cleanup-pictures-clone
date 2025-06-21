@@ -111,6 +111,12 @@ export default function WorkshopPage() {
       }
     } catch (error) {
       console.error('loadUserIPs: 加载失败:', error);
+      
+      // 如果是网络错误，显示友好提示
+      if (error instanceof Error && error.message.includes('Failed to fetch')) {
+        console.warn('检测到网络连接问题，建议检查网络连接');
+      }
+      
       setUserIPs([]); // Clear previous data on error
     } finally {
       setLoading(false);

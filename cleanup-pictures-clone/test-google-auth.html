@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Google登录测试</title>
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 600px;
+            margin: 50px auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .btn {
+            display: inline-block;
+            padding: 12px 24px;
+            background-color: #4285f4;
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+            border: none;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 10px 5px;
+        }
+        .btn:hover {
+            background-color: #3367d6;
+        }
+        .info {
+            background-color: #e7f3ff;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 20px 0;
+        }
+        .status {
+            margin: 20px 0;
+            padding: 10px;
+            border-radius: 5px;
+        }
+        .success { background-color: #d4edda; color: #155724; }
+        .error { background-color: #f8d7da; color: #721c24; }
+        .loading { background-color: #fff3cd; color: #856404; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Google OAuth 登录测试</h1>
+        
+        <div class="info">
+            <h3>测试说明：</h3>
+            <p>1. 点击下方按钮直接测试Google登录</p>
+            <p>2. 观察控制台日志</p>
+            <p>3. 验证回调处理逻辑</p>
+        </div>
+
+        <div id="status"></div>
+
+        <button id="googleLogin" class="btn">🚀 测试 Google 登录</button>
+        <button id="checkSession" class="btn">📋 检查当前会话</button>
+        <button id="logout" class="btn">🚪 退出登录</button>
+
+        <div id="logs" style="margin-top: 20px;">
+            <h3>操作日志：</h3>
+            <div id="logContent" style="background: #f8f9fa; padding: 10px; border-radius: 5px; height: 200px; overflow-y: auto; font-family: monospace; font-size: 12px;"></div>
+        </div>
+    </div>
+
+    <script>
+        // Supabase配置
+        const supabaseUrl = 'https://wrfvysakckcmvquvwuei.supabase.co';
+        const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndyZnZ5c2FrY2tjbXZxdXZ3dWVpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzQwNjYxMzAsImV4cCI6MjA0OTY0MjEzMH0.pjvKNtQdxXQSEz1qjFfAoH8Q5hqCx1Ej93P0cNwmV2s';
+        
+        const supabase = window.supabase.createClient(supabaseUrl, supabaseAnonKey);
+
+        const statusDiv = document.getElementById('status');
+        const logContent = document.getElementById('logContent');
+
+        function log(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            const logEntry = `[${timestamp}] ${message}\n`;
+            logContent.textContent += logEntry;
+            logContent.scrollTop = logContent.scrollHeight;
+            console.log(message);
+        }
+
+        function setStatus(message, type) {
+            statusDiv.innerHTML = `<div class="status ${type}">${message}</div>`;
+        }
+
+        // Google登录
+        document.getElementById('googleLogin').addEventListener('click', async () => {
+            try {
+                setStatus('正在启动Google登录...', 'loading');
+                log('🚀 开始Google登录流程');
+                
+                // 检查是否需要强制重授权
+                const forceReauth = localStorage.getItem('forceReauth') === 'true';
+                
+                if (!forceReauth) {
+                    // 检查是否已有会话（仅在非强制重授权时）
+                    const { data: sessionData } = await supabase.auth.getSession();
+                    
+                    if (sessionData.session) {
+                        log('✅ 检测到现有会话，用户已登录');
+                        setStatus('用户已登录', 'success');
+                        return;
+                    }
+                } else {
+                    log('🔄 检测到强制重授权标记，将要求用户重新授权');
+                }
+                
+                // 准备授权参数
+                const queryParams = {
+                    access_type: 'online'
+                };
+                
+                // 如果需要强制重授权，添加consent参数
+                if (forceReauth) {
+                    queryParams.prompt = 'consent'; // 强制重新授权
+                    localStorage.removeItem('forceReauth');
+                    log('🗑️ 已清除强制重授权标记');
+                }
+                
+                const { data, error } = await supabase.auth.signInWithOAuth({
+                    provider: 'google',
+                    options: {
+                        redirectTo: `http://localhost:3300/auth/callback`,
+                        queryParams
+                    }
+                });
+
+                if (error) {
+                    throw error;
+                }
+
+                log(`✅ Google登录请求已发送${forceReauth ? '（强制重授权模式）' : ''}，等待重定向...`);
+                
+            } catch (error) {
+                log(`❌ Google登录失败: ${error.message}`, 'error');
+                setStatus(`登录失败: ${error.message}`, 'error');
+            }
+        });
+
+        // 检查会话
+        document.getElementById('checkSession').addEventListener('click', async () => {
+            try {
+                setStatus('正在检查会话...', 'loading');
+                log('📋 检查当前会话状态');
+                
+                const { data, error } = await supabase.auth.getSession();
+                
+                if (error) {
+                    throw error;
+                }
+
+                if (data.session) {
+                    const user = data.session.user;
+                    log(`✅ 用户已登录: ${user.email} (${user.id})`);
+                    log(`📄 用户元数据: ${JSON.stringify(user.user_metadata, null, 2)}`);
+                    setStatus(`已登录: ${user.email}`, 'success');
+                } else {
+                    log('❌ 未找到活跃会话');
+                    setStatus('未登录', 'error');
+                }
+                
+            } catch (error) {
+                log(`❌ 检查会话失败: ${error.message}`);
+                setStatus(`检查失败: ${error.message}`, 'error');
+            }
+        });
+
+        // 退出登录
+        document.getElementById('logout').addEventListener('click', async () => {
+            try {
+                setStatus('正在退出...', 'loading');
+                log('🚪 开始退出登录');
+                
+                // 设置强制重授权标记
+                localStorage.setItem('forceReauth', 'true');
+                log('🏷️ 已设置强制重授权标记');
+                
+                // 全局退出，清除所有OAuth会话
+                const { error } = await supabase.auth.signOut({ scope: 'global' });
+                
+                if (error) {
+                    throw error;
+                }
+
+                // 额外清除可能残留的认证相关cookies
+                document.cookie.split(";").forEach(function(c) { 
+                    document.cookie = c.replace(/^ +/, "").replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/"); 
+                });
+
+                log('✅ 已成功退出登录并清除所有cookie');
+                log('📝 下次登录将强制要求重新授权Google');
+                setStatus('已退出登录', 'success');
+                
+            } catch (error) {
+                log(`❌ 退出登录失败: ${error.message}`);
+                setStatus(`退出失败: ${error.message}`, 'error');
+            }
+        });
+
+        // 监听认证状态变化
+        supabase.auth.onAuthStateChange((event, session) => {
+            log(`🔄 认证状态变化: ${event}`);
+            if (session) {
+                log(`👤 用户信息: ${session.user.email}`);
+            }
+        });
+
+        // 页面加载时检查会话
+        window.addEventListener('load', () => {
+            log('📱 页面已加载，开始初始化...');
+            
+            // 检查强制重授权标记
+            const forceReauth = localStorage.getItem('forceReauth') === 'true';
+            if (forceReauth) {
+                log('⚠️ 检测到强制重授权标记，下次登录将要求重新授权');
+            }
+            
+            document.getElementById('checkSession').click();
+        });
+    </script>
+</body>
+</html>

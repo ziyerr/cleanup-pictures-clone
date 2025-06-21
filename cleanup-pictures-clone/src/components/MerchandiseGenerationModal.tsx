@@ -87,7 +87,8 @@ export default function MerchandiseGenerationModal({
         const response = await fetch(`/api/batch/${batchId}`, {
           headers: {
             'x-user-id': currentUser.id
-          }
+          },
+          signal: AbortSignal.timeout(10000) // 10秒超时
         });
         
         if (!response.ok) {
@@ -145,7 +146,8 @@ export default function MerchandiseGenerationModal({
           'x-user-id': currentUser.id,
           'Authorization': `Bearer ${authToken}`,
         },
-        body: JSON.stringify({ selectedItems })
+        body: JSON.stringify({ selectedItems }),
+        signal: AbortSignal.timeout(10000) // 10秒超时
       });
 
       console.log('API响应状态:', response.status);
