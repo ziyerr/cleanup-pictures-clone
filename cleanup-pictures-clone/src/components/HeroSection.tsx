@@ -544,15 +544,15 @@ export default function HeroSection() {
                     <span className="text-lg">📱</span>
                   </div>
                   
-                  {/* 钥匙扣 - 左下角悬浮 */}
-                  <div className="absolute -bottom-6 -left-6 w-10 h-10 bg-white rounded-full flex items-center justify-center shadow-xl border border-gray-200 hover:scale-110 transition-transform">
-                    <span className="text-sm">🗝️</span>
-                  </div>
-                  
-                  {/* 衣服 - 右下角往上移120px */}
-                  <div className="absolute -right-6 w-12 h-12 bg-white rounded-lg flex items-center justify-center shadow-xl border border-gray-200 hover:scale-110 transition-transform" style={{bottom: '120px'}}>
-                    <span className="text-lg">👕</span>
-                  </div>
+                                     {/* 钥匙扣 - 左下角外侧悬浮 */}
+                   <div className="absolute -left-6 w-10 h-10 bg-white rounded-full flex items-center justify-center shadow-xl border border-gray-200 hover:scale-110 transition-transform" style={{bottom: '-24px'}}>
+                     <span className="text-sm">🗝️</span>
+                   </div>
+                   
+                   {/* 衣服 - 右下角外侧悬浮 */}
+                   <div className="absolute -right-6 w-12 h-12 bg-white rounded-lg flex items-center justify-center shadow-xl border border-gray-200 hover:scale-110 transition-transform" style={{bottom: '-24px'}}>
+                     <span className="text-lg">👕</span>
+                   </div>
                 </div>
                 {/* 操作按钮区域：图片下方64px间距，块级独立，宽度与图片对齐 */}
                 <div className="flex flex-row justify-center items-center gap-6 px-8 py-6 bg-white rounded-3xl shadow-2xl border border-gray-100 mt-20 mx-auto max-w-lg" style={{marginTop:'80px'}}>

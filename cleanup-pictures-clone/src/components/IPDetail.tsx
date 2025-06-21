@@ -391,15 +391,15 @@ export default function IPDetail({ ipCharacter, onBack, onUpdate }: IPDetailProp
                 <span className="text-lg">📱</span>
               </div>
               
-              {/* 钥匙扣 - 左下角悬浮 */}
-              <div className="absolute -bottom-6 -left-6 w-10 h-10 bg-white rounded-full flex items-center justify-center shadow-xl border border-gray-200 hover:scale-110 transition-transform">
-                <span className="text-sm">🗝️</span>
-              </div>
-              
-              {/* 衣服 - 右下角往上移120px */}
-              <div className="absolute -right-6 w-12 h-12 bg-white rounded-lg flex items-center justify-center shadow-xl border border-gray-200 hover:scale-110 transition-transform" style={{bottom: '120px'}}>
-                <span className="text-lg">👕</span>
-              </div>
+                             {/* 钥匙扣 - 左下角外侧悬浮 */}
+               <div className="absolute -left-6 w-10 h-10 bg-white rounded-full flex items-center justify-center shadow-xl border border-gray-200 hover:scale-110 transition-transform" style={{bottom: '-24px'}}>
+                 <span className="text-sm">🗝️</span>
+               </div>
+               
+               {/* 衣服 - 右下角外侧悬浮 */}
+               <div className="absolute -right-6 w-12 h-12 bg-white rounded-lg flex items-center justify-center shadow-xl border border-gray-200 hover:scale-110 transition-transform" style={{bottom: '-24px'}}>
+                 <span className="text-lg">👕</span>
+               </div>
             </div>
             
             {/* Multi-view Images */}

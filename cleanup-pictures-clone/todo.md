@@ -241,6 +241,14 @@
   - 调整4：钥匙扣和30+保持角落位置，形成视觉锚点
   - 文件：`src/components/IPDetail.tsx` & `src/components/HeroSection.tsx`
   - 修改时间: 2024年12月19日 17:40
+- [x] **🎯 底部图标位置微调**
+  - 需求：钥匙扣和衣服图标移至底边框外侧的箭头位置
+  - 调整1：钥匙扣图标移至左下角外侧 (bottom: -24px, left: -6px)
+  - 调整2：衣服图标移至右下角外侧 (bottom: -24px, right: -6px)
+  - 效果：两个图标对称分布在底部边缘，视觉更平衡
+  - 保持：手机壳(左侧120px)和30+(右上角)位置不变
+  - 文件：`src/components/IPDetail.tsx` & `src/components/HeroSection.tsx`
+  - 修改时间: 2024年12月19日 17:50
 
 ## ⚠️ 发现的问题
 
