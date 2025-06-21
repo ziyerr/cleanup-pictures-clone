@@ -13,7 +13,7 @@ type UseCase = {
 };
 
 export default function UseCases() {
-  const [activeCategory, setActiveCategory] = useState('个人用户');
+  const [activeCategory, setActiveCategory] = useState('创意设计师');
 
   const categories = [
     '个人用户',
