@@ -68,7 +68,7 @@ export default function IPDetail({ ipCharacter, onBack, onUpdate }: IPDetailProp
       }
       
       console.log('IPDetail - 获取到的IP状态数据:', data);
-      setCharacterStatus(data);
+      setCharacterStatus(data as IPCharacterWithStatus);
       
       // 获取正在进行的真实任务
       try {

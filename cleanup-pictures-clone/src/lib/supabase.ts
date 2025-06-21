@@ -283,7 +283,7 @@ export const getUserIPCharacters = async (userId: string, retryCount = 0): Promi
   }
 };
 
-export const getIPCharacterWithStatus = async (ipId: string, retryCount = 0) => {
+export const getIPCharacterWithStatus = async (ipId: string, retryCount = 0): Promise<(UserIPCharacter & { initial_task_status?: string; merchandise_task_status?: string }) | null> => {
   try {
     console.log(`获取IP形象状态: ${ipId} (尝试 ${retryCount + 1})`);
     
