@@ -4,11 +4,15 @@ import { cookies } from 'next/headers';
 import { creemAPI } from '@/lib/creem-api';
 import { CREEM_CONFIG } from '@/lib/creem-config';
 
+// 导出一个异步函数，用于处理POST请求
 export async function POST(request: NextRequest) {
   try {
+    // 创建一个Supabase客户端
     const supabase = createServerComponentClient({ cookies });
+    // 获取用户信息
     const { data: { user }, error: authError } = await supabase.auth.getUser();
 
+    // 如果用户未登录或登录失败，返回401错误
     if (authError || !user) {
       return NextResponse.json(
         { error: '未授权访问' },
@@ -16,9 +20,11 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // 获取请求体中的planId
     const body = await request.json();
     const { planId } = body;
 
+    // 如果planId不存在或不在['personal', 'team']中，返回400错误
     if (!planId || !['personal', 'team'].includes(planId)) {
       return NextResponse.json(
         { error: '无效的订阅计划' },
