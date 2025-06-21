@@ -793,116 +793,42 @@ export const generateIPCharacter = async (request: AIGenerationRequest): Promise
 };
 
 // Helper to call Sparrow API for 2D图生2D图 tasks using gpt-4o-image
-// 强制使用gpt-4o-image模型进行周边图生成
-// 异步函数，用于触发 Sparrow 生成
-async function triggerSparrowGeneration(prompt: string, imageUrl?: string) {
+// 重构：使用与首页相同的成功API调用方式
+async function triggerSparrowGeneration(prompt: string, imageUrl?: string): Promise<string> {
   // 如果没有提供 imageUrl，抛出错误
   if (!imageUrl) {
     throw new Error('2D图生2D图功能必须提供基础IP形象图作为输入');
   }
 
   try {
-    // 强制使用gpt-4o-image模型生成周边图
-    console.log('🎨 强制使用gpt-4o-image模型生成周边图');
-    console.log('正在获取基础IP形象图:', imageUrl);
+    console.log('🎨 使用统一的API调用方式生成2D图');
+    console.log('基础图片URL:', imageUrl.substring(0, 50) + '...');
+    console.log('生成提示词:', prompt.substring(0, 100) + '...');
     
-    // 获取图片并转换为base64
-    let imageBase64: string;
-    if (imageUrl.startsWith('data:image')) {
-      // 如果已经是base64格式，直接使用
-      imageBase64 = imageUrl;
-    } else {
-      // 下载图片并转换为base64
-      const response = await fetch(imageUrl);
-      if (!response.ok) {
-        throw new Error(`Failed to fetch image: ${response.status}`);
-      }
-      const blob = await response.blob();
-      const buffer = await blob.arrayBuffer();
-      const base64 = btoa(String.fromCharCode(...new Uint8Array(buffer)));
-      imageBase64 = `data:${blob.type};base64,${base64}`;
-    }
+    // 构建增强的提示词，确保保持IP形象特征
+    const enhancedPrompt = `使用提供的IP形象图片作为参考，${prompt}。要求：
+1. 严格保持IP形象的核心特征、颜色和风格
+2. 根据周边类型调整设计布局和比例
+3. 确保商品化效果良好，适合实际生产
+4. 生成高质量的产品设计图，背景简洁`;
 
-    console.log('✅ 基础IP形象图已准备完成');
-
-    // 强制构建gpt-4o-image的请求格式，确保使用图生图功能 - 使用标准OpenAI Chat格式
-    const requestBody = {
-      stream: false,
-      model: 'gpt-4o-image', // 强制指定gpt-4o-image模型
-      messages: [
-        {
-          role: "user",
-          content: [
-            {
-              type: "text",
-              text: `使用提供的IP形象图片作为参考，${prompt}。要求：
-1. 保持IP形象的核心特征和风格
-2. 根据周边类型调整设计布局
-3. 确保商品化效果良好
-4. 生成高质量的产品设计图`
-            },
-            {
-              type: "image_url",
-              image_url: {
-                url: imageBase64
-              }
-            }
-          ]
-        }
-      ]
-    };
-
-    console.log('🚀 发送gpt-4o-image请求 - 强制模型模式');
-    console.log('提示词:', prompt.substring(0, 100) + '...');
-    
-    const response = await fetch(`${AI_API_CONFIG.baseUrl}${AI_API_CONFIG.endpoint}`, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${AI_API_CONFIG.apiKey}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(requestBody)
+    // 使用与首页相同的成功API调用方式
+    const result = await generateIPCharacter({
+      image: imageUrl, // 传入基础IP图片URL
+      prompt: enhancedPrompt
     });
 
-    if (!response.ok) {
-      const errorBody = await response.text();
-      console.error(`❌ gpt-4o-image API error: ${response.statusText}`, errorBody);
-      throw new Error(`Failed to generate image with gpt-4o-image for prompt: ${prompt}`);
-    }
-    
-    const data = await response.json();
-    console.log('📦 gpt-4o-image API 响应接收完成');
-    
-    // 解析gpt-4o-image的响应格式
-    if (!data.choices || !Array.isArray(data.choices) || data.choices.length === 0) {
-      throw new Error('gpt-4o-image API返回的数据格式无效 - 缺少choices字段');
-    }
-    
-    const content = data.choices[0]?.message?.content;
-    if (!content) {
-      throw new Error('gpt-4o-image API返回的数据格式无效 - 缺少content字段');
-    }
-    
-    // 从响应内容中提取图片URL (gpt-4o-image返回Markdown格式，包含图片URL)
-    const imageUrlMatch = content.match(/!\[.*?\]\((https?:\/\/[^\s)]+)\)/);
-    if (imageUrlMatch && imageUrlMatch[1]) {
-      console.log('✅ 成功提取gpt-4o-image生成的图片URL:', imageUrlMatch[1]);
-      return imageUrlMatch[1];
+    if (result.success && result.data?.url) {
+      console.log('✅ 2D图生2D图生成成功:', result.data.url);
+      return result.data.url;
     } else {
-      // 尝试其他可能的URL格式
-      const urlMatch = content.match(/(https?:\/\/[^\s]+\.(png|jpg|jpeg|webp))/i);
-      if (urlMatch) {
-        console.log('✅ 成功提取gpt-4o-image生成的图片URL (备用格式):', urlMatch[1]);
-        return urlMatch[1];
-      }
-      
-      console.log('⚠️ gpt-4o-image响应内容:', content);
-      throw new Error('无法从gpt-4o-image API响应中提取图片URL');
+      console.error('❌ 2D图生2D图生成失败:', result.error);
+      throw new Error(result.error || '2D图生2D图生成失败');
     }
     
   } catch (error) {
-    console.error('❌ gpt-4o-image周边图生成失败:', error);
-    throw new Error(`gpt-4o-image图片生成失败: ${error instanceof Error ? error.message : '未知错误'}`);
+    console.error('❌ triggerSparrowGeneration失败:', error);
+    throw new Error(`2D图生2D图生成失败: ${error instanceof Error ? error.message : '未知错误'}`);
   }
 }
 
@@ -947,40 +873,85 @@ export const generateMultiViews = async (
   }, {} as { [key: string]: string });
 };
 
-// 处理图像生成任务 - 通用函数
+// 处理图像生成任务 - 优化版本，统一使用成功的API调用方式
 export const processImageGenerationTask = async (taskId: string) => {
+   console.log(`🚀 开始处理图像生成任务: ${taskId}`);
+   
    const task = await getGenerationTask(taskId);
    if (!task) {
-     console.error(`Task ${taskId} not found for processing.`);
+     console.error(`❌ 任务 ${taskId} 不存在`);
      return;
    }
 
+   console.log(`📋 任务详情:`, {
+     id: taskId,
+     type: task.task_type,
+     prompt: task.prompt?.substring(0, 100) + '...',
+     hasOriginalImage: !!task.original_image_url,
+     status: task.status
+   });
+
    try {
+     // 更新任务状态为处理中
      await updateGenerationTask(taskId, { status: 'processing' });
-     const imageUrl = await triggerSparrowGeneration(task.prompt, task.original_image_url);
+     console.log(`📝 任务 ${taskId} 状态已更新为 processing`);
      
+     // 使用统一的图片生成接口
+     const imageUrl = await triggerSparrowGeneration(task.prompt, task.original_image_url);
+     console.log(`✅ 图片生成成功: ${imageUrl}`);
+     
+     // 下载生成的图片
+     console.log(`📥 开始下载生成的图片...`);
      const response = await fetch(imageUrl);
-     if (!response.ok) throw new Error(`Failed to fetch generated image: ${response.statusText}`);
+     if (!response.ok) {
+       throw new Error(`下载生成图片失败: ${response.status} ${response.statusText}`);
+     }
      
      const blob = await response.blob();
-     const fileName = `generated_${taskId}.png`;
-     const finalImageUrl = await uploadImageToSupabase(blob, fileName);
+     console.log(`📦 图片下载完成: ${(blob.size / 1024).toFixed(1)}KB`);
      
+     // 上传到Supabase
+     const fileName = `generated_${taskId}.png`;
+     console.log(`🔄 上传图片到Supabase: ${fileName}`);
+     const finalImageUrl = await uploadImageToSupabase(blob, fileName);
+     console.log(`✅ 图片上传完成: ${finalImageUrl}`);
+     
+     // 更新任务为完成状态
      const completedTask = await updateGenerationTask(taskId, { 
        status: 'completed', 
        result_image_url: finalImageUrl 
      });
+     console.log(`✅ 任务 ${taskId} 完成`);
 
+     // 更新角色数据
      await updateCharacterOnTaskCompletion(completedTask);
 
    } catch (error) {
-     console.error(`Task ${taskId} failed:`, error);
+     console.error(`❌ 任务 ${taskId} 处理失败:`, error);
+     
+     // 提供更详细的错误信息
+     let errorMessage = '未知错误';
+     if (error instanceof Error) {
+       errorMessage = error.message;
+       
+       // 特殊错误类型的处理
+       if (error.message.includes('API密钥无效')) {
+         errorMessage = 'API配置问题，请联系管理员';
+       } else if (error.message.includes('网络连接')) {
+         errorMessage = '网络连接失败，请稍后重试';
+       } else if (error.message.includes('超时')) {
+         errorMessage = '图片生成超时，请尝试简化提示词';
+       }
+     }
+     
      await updateGenerationTask(taskId, { 
        status: 'failed', 
-       error_message: error instanceof Error ? error.message : '未知错误' 
+       error_message: errorMessage
      });
+     
+     console.log(`📝 任务 ${taskId} 状态已更新为 failed: ${errorMessage}`);
    }
- };
+};
 
 export const generateMerchandise = async (
   originalImageUrl: string,
