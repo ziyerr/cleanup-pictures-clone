@@ -530,36 +530,26 @@ export default function HeroSection() {
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent pointer-events-none" />
                   
-                  {/* 装饰图标层 */}
-                  <div className="absolute inset-0 pointer-events-none">
-                    {/* 左上角星星 */}
-                    <div className="absolute top-4 left-4 w-8 h-8 bg-yellow-200/90 rounded-full flex items-center justify-center shadow-lg animate-pulse">
-                      <span className="text-lg">✨</span>
+                  {/* 产品装饰图标层 - 4个核心产品 */}
+                  <div className="absolute inset-0 pointer-events-none z-10">
+                    {/* 30+ 产品标识 - 右上角边缘 */}
+                    <div className="absolute -top-4 -right-4 w-16 h-16 bg-cleanup-green rounded-full flex items-center justify-center shadow-lg border-4 border-white">
+                      <span className="text-black font-bold text-xs">30+</span>
                     </div>
                     
-                    {/* 右上角心形 */}
-                    <div className="absolute top-6 right-6 w-9 h-9 bg-pink-200/90 rounded-full flex items-center justify-center shadow-lg animate-bounce" style={{animationDelay: '0.5s'}}>
-                      <span className="text-lg">💖</span>
+                    {/* 手机壳 - 左上角边缘 */}
+                    <div className="absolute -top-3 -left-3 w-12 h-12 bg-white rounded-lg flex items-center justify-center shadow-lg border-2 border-cleanup-green hover:scale-110 transition-transform">
+                      <span className="text-lg">📱</span>
                     </div>
                     
-                    {/* 左下角彩虹 */}
-                    <div className="absolute bottom-8 left-6 w-8 h-8 bg-blue-200/90 rounded-full flex items-center justify-center shadow-lg animate-pulse" style={{animationDelay: '1s'}}>
-                      <span className="text-lg">🌈</span>
+                    {/* 钥匙扣 - 左下角边缘 */}
+                    <div className="absolute -bottom-3 -left-3 w-10 h-10 bg-white rounded-full flex items-center justify-center shadow-lg border border-gray-200 hover:scale-110 transition-transform">
+                      <span className="text-sm">🗝️</span>
                     </div>
                     
-                    {/* 右下角皇冠 */}
-                    <div className="absolute bottom-4 right-4 w-7 h-7 bg-purple-200/90 rounded-full flex items-center justify-center shadow-lg animate-bounce" style={{animationDelay: '1.5s'}}>
-                      <span className="text-sm">👑</span>
-                    </div>
-                    
-                    {/* 右侧蝴蝶 */}
-                    <div className="absolute top-1/2 right-2 w-7 h-7 bg-orange-200/90 rounded-full flex items-center justify-center shadow-lg animate-pulse transform -translate-y-1/2" style={{animationDelay: '2s'}}>
-                      <span className="text-sm">🦋</span>
-                    </div>
-                    
-                    {/* 左侧火箭 */}
-                    <div className="absolute top-1/3 left-2 w-6 h-6 bg-green-200/90 rounded-full flex items-center justify-center shadow-lg animate-bounce" style={{animationDelay: '0.3s'}}>
-                      <span className="text-xs">🚀</span>
+                    {/* 衣服 - 右下角边缘 */}
+                    <div className="absolute -bottom-3 -right-3 w-12 h-12 bg-white rounded-lg flex items-center justify-center shadow-lg border border-gray-200 hover:scale-110 transition-transform">
+                      <span className="text-lg">👕</span>
                     </div>
                   </div>
                 </div>
@@ -568,7 +558,10 @@ export default function HeroSection() {
                   <button
                     onClick={handleSaveIPCharacter}
                     disabled={isSaving}
-                    className="flex flex-col items-center gap-1 px-14 py-4 rounded-3xl bg-cleanup-green text-black font-extrabold text-xl shadow-xl border-2 border-cleanup-green hover:bg-green-300 transition-all min-w-[240px] disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="flex flex-col items-center gap-1 px-14 py-4 rounded-3xl bg-cleanup-green text-black font-extrabold text-xl shadow-xl border-2 border-cleanup-green hover:bg-green-300 transition-all min-w-[240px] disabled:opacity-50 disabled:cursor-not-allowed animate-pulse hover:animate-bounce"
+                    style={{
+                      animation: isSaving ? 'none' : 'gentle-bounce 2s ease-in-out infinite'
+                    }}
                   >
                     <span className="flex items-center gap-2 text-2xl font-extrabold">
                       {isSaving ? (
@@ -659,40 +652,7 @@ export default function HeroSection() {
               </div>
             )}
 
-            {/* Floating Product Icons - 确保在所有状态下都显示 */}
-            <div className="absolute -top-4 -right-4 w-16 h-16 bg-cleanup-green rounded-full flex items-center justify-center shadow-lg z-10">
-              <span className="text-black font-bold text-xs">30+</span>
-            </div>
 
-            {/* 左下角 - 手机壳 */}
-            <div className="absolute -bottom-4 -left-4 w-12 h-12 bg-white rounded-lg flex items-center justify-center shadow-lg border-2 border-cleanup-green z-10 hover:scale-110 transition-transform">
-              <span className="text-lg">📱</span>
-            </div>
-
-            {/* 左侧中间 - 钥匙扣 */}
-            <div className="absolute top-1/2 -left-6 w-10 h-10 bg-white rounded-full flex items-center justify-center shadow-lg border border-gray-200 z-10 hover:scale-110 transition-transform">
-              <span className="text-sm">🗝️</span>
-            </div>
-
-            {/* 右下角 - T恤 */}
-            <div className="absolute -bottom-4 -right-4 w-12 h-12 bg-white rounded-lg flex items-center justify-center shadow-lg border border-gray-200 z-10 hover:scale-110 transition-transform">
-              <span className="text-lg">👕</span>
-            </div>
-
-            {/* 右侧中间 - 马克杯 */}
-            <div className="absolute top-1/2 -right-6 w-10 h-10 bg-white rounded-lg flex items-center justify-center shadow-lg border border-gray-200 z-10 hover:scale-110 transition-transform">
-              <span className="text-sm">☕</span>
-            </div>
-
-            {/* 上方中间 - 徽章 */}
-            <div className="absolute -top-4 left-1/2 transform -translate-x-1/2 w-10 h-10 bg-white rounded-full flex items-center justify-center shadow-lg border border-gray-200 z-10 hover:scale-110 transition-transform">
-              <span className="text-sm">🏅</span>
-            </div>
-
-            {/* 下方中间 - 贴纸 */}
-            <div className="absolute -bottom-4 left-1/2 transform -translate-x-1/2 w-10 h-10 bg-white rounded-full flex items-center justify-center shadow-lg border border-gray-200 z-10 hover:scale-110 transition-transform">
-              <span className="text-sm">🎨</span>
-            </div>
           </div>
         </div>
       </div>

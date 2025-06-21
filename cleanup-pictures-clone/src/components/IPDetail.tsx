@@ -377,36 +377,26 @@ export default function IPDetail({ ipCharacter, onBack, onUpdate }: IPDetailProp
                 className="w-full h-full object-cover"
               />
               
-              {/* 随机装饰图标 */}
-              <div className="absolute inset-0 pointer-events-none">
-                {/* 图标1 - 左上角 */}
-                <div className="absolute top-4 left-4 w-8 h-8 bg-yellow-100 rounded-full flex items-center justify-center shadow-lg transform rotate-12">
-                  <span className="text-lg">✨</span>
+              {/* 装饰图标 - 4个核心产品 */}
+              <div className="absolute inset-0 pointer-events-none z-10">
+                {/* 30+ 产品标识 - 右上角 */}
+                <div className="absolute -top-4 -right-4 w-16 h-16 bg-cleanup-green rounded-full flex items-center justify-center shadow-lg border-4 border-white">
+                  <span className="text-black font-bold text-xs">30+</span>
                 </div>
                 
-                {/* 图标2 - 右上角 */}
-                <div className="absolute top-6 right-6 w-10 h-10 bg-pink-100 rounded-full flex items-center justify-center shadow-lg transform -rotate-12">
-                  <span className="text-xl">🎨</span>
+                {/* 手机壳 - 左上角边缘 */}
+                <div className="absolute -top-3 -left-3 w-12 h-12 bg-white rounded-lg flex items-center justify-center shadow-lg border-2 border-cleanup-green hover:scale-110 transition-transform">
+                  <span className="text-lg">📱</span>
                 </div>
                 
-                {/* 图标3 - 左下角 */}
-                <div className="absolute bottom-8 left-6 w-9 h-9 bg-blue-100 rounded-full flex items-center justify-center shadow-lg transform rotate-45">
-                  <span className="text-lg">🎭</span>
+                {/* 钥匙扣 - 左下角边缘 */}
+                <div className="absolute -bottom-3 -left-3 w-10 h-10 bg-white rounded-full flex items-center justify-center shadow-lg border border-gray-200 hover:scale-110 transition-transform">
+                  <span className="text-sm">🗝️</span>
                 </div>
                 
-                {/* 图标4 - 右下角 */}
-                <div className="absolute bottom-4 right-4 w-7 h-7 bg-green-100 rounded-full flex items-center justify-center shadow-lg transform -rotate-45">
-                  <span className="text-sm">🎪</span>
-                </div>
-                
-                {/* 图标5 - 右侧中间 */}
-                <div className="absolute top-1/2 right-2 w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center shadow-lg transform rotate-90 -translate-y-1/2">
-                  <span className="text-lg">🎀</span>
-                </div>
-                
-                {/* 图标6 - 左侧中间 */}
-                <div className="absolute top-1/3 left-2 w-6 h-6 bg-orange-100 rounded-full flex items-center justify-center shadow-lg transform -rotate-30">
-                  <span className="text-sm">⭐</span>
+                {/* 衣服 - 右下角边缘 */}
+                <div className="absolute -bottom-3 -right-3 w-12 h-12 bg-white rounded-lg flex items-center justify-center shadow-lg border border-gray-200 hover:scale-110 transition-transform">
+                  <span className="text-lg">👕</span>
                 </div>
               </div>
             </div>

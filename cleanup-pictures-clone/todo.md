@@ -209,21 +209,29 @@
   - 优化1：IP效果图撑满容器，去除左右留白
   - 优化2：添加随机装饰图标，始终跟随IP效果图
   - 优化3：增加动画效果，提升视觉体验
-  - 文件：`src/components/IPDetail.tsx`, `src/components/HeroSection.tsx`
-  - 修复时间: 2024年12月19日 15:35
-- [x] **提示词优化：确保IP形象完整性**
-  - 修改：默认提示词增加"需要确保生成的IP形象完整，包含完整的身体和四肢"
-  - 目的：提高生成的IP形象质量和完整性
-  - 文件：`src/components/HeroSection.tsx`
-  - 修复时间: 2024年12月19日 15:35
-- [x] **🎯 智能任务通知徽章优化**
-  - 最佳实践：Smart Notification Badge / Contextual Status Indicator
+  - 文件：`src/components/IPDetail.tsx` & `src/components/HeroSection.tsx`
+  - 修改时间: 2024年12月19日 16:20
+- [x] **智能任务通知徽章优化 - Smart Notification Badge**
   - 功能1：进入任务列表页面后自动清空完成任务提醒
-  - 功能2：没有未读和没有进行中任务时智能隐藏
+  - 功能2：没有未读和没有进行中任务时智能隐藏徽章
   - 功能3：引入已读状态管理，基于localStorage持久化
-  - 功能4：上下文感知，根据用户行为调整通知策略
+  - 最佳实践：Progressive Disclosure, Context Awareness, User Intent Recognition
   - 文件：`src/components/GlobalTaskButton.tsx`
-  - 实现时间: 2024年12月19日 16:05
+  - 修改时间: 2024年12月19日 16:50
+- [x] **🎨 装饰图标精简优化**
+  - 需求：只保留4个核心产品图标（钥匙扣/手机壳/衣服/30+）
+  - 优化1：移除多余装饰图标，从6+个减少到4个核心产品
+  - 优化2：手机壳图标移至IP图片边缘，而非按键框下方
+  - 优化3：保持产品图标的hover缩放效果和边框样式
+  - 文件：`src/components/IPDetail.tsx` & `src/components/HeroSection.tsx`
+  - 修改时间: 2024年12月19日 17:20
+- [x] **✨ 保存按钮动效优化**
+  - 功能：为"保存IP形象"按钮添加微微跳动动效
+  - 效果：鼓励用户点击，提升转化率
+  - 实现：自定义gentle-bounce动画，2秒循环，优雅不突兀
+  - 细节：保存中时禁用动画，hover时切换为bounce效果
+  - 文件：`src/components/HeroSection.tsx` & `src/app/globals.css`
+  - 修改时间: 2024年12月19日 17:20
 
 ## ⚠️ 发现的问题
 
@@ -331,21 +339,29 @@
   - 优化1：IP效果图撑满容器，去除左右留白
   - 优化2：添加随机装饰图标，始终跟随IP效果图
   - 优化3：增加动画效果，提升视觉体验
-  - 文件：`src/components/IPDetail.tsx`, `src/components/HeroSection.tsx`
-  - 修复时间: 2024年12月19日 15:35
-- [x] **提示词优化：确保IP形象完整性**
-  - 修改：默认提示词增加"需要确保生成的IP形象完整，包含完整的身体和四肢"
-  - 目的：提高生成的IP形象质量和完整性
-  - 文件：`src/components/HeroSection.tsx`
-  - 修复时间: 2024年12月19日 15:35
-- [x] **🎯 智能任务通知徽章优化**
-  - 最佳实践：Smart Notification Badge / Contextual Status Indicator
+  - 文件：`src/components/IPDetail.tsx` & `src/components/HeroSection.tsx`
+  - 修改时间: 2024年12月19日 16:20
+- [x] **智能任务通知徽章优化 - Smart Notification Badge**
   - 功能1：进入任务列表页面后自动清空完成任务提醒
-  - 功能2：没有未读和没有进行中任务时智能隐藏
+  - 功能2：没有未读和没有进行中任务时智能隐藏徽章
   - 功能3：引入已读状态管理，基于localStorage持久化
-  - 功能4：上下文感知，根据用户行为调整通知策略
+  - 最佳实践：Progressive Disclosure, Context Awareness, User Intent Recognition
   - 文件：`src/components/GlobalTaskButton.tsx`
-  - 实现时间: 2024年12月19日 16:05
+  - 修改时间: 2024年12月19日 16:50
+- [x] **🎨 装饰图标精简优化**
+  - 需求：只保留4个核心产品图标（钥匙扣/手机壳/衣服/30+）
+  - 优化1：移除多余装饰图标，从6+个减少到4个核心产品
+  - 优化2：手机壳图标移至IP图片边缘，而非按键框下方
+  - 优化3：保持产品图标的hover缩放效果和边框样式
+  - 文件：`src/components/IPDetail.tsx` & `src/components/HeroSection.tsx`
+  - 修改时间: 2024年12月19日 17:20
+- [x] **✨ 保存按钮动效优化**
+  - 功能：为"保存IP形象"按钮添加微微跳动动效
+  - 效果：鼓励用户点击，提升转化率
+  - 实现：自定义gentle-bounce动画，2秒循环，优雅不突兀
+  - 细节：保存中时禁用动画，hover时切换为bounce效果
+  - 文件：`src/components/HeroSection.tsx` & `src/app/globals.css`
+  - 修改时间: 2024年12月19日 17:20
 
 ### UI改进详情
 **装饰图标系统：**
